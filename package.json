@@ -1,0 +1,5 @@
+{
+  "name": "papergrid",
+  "private": true,
+  "workspaces": ["grid-core", "grid", "bloom-grid"]
+}
