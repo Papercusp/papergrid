@@ -22,6 +22,26 @@ export type { ButtonDef, DataGridShellProps } from './DataGridShell';
 export { default as GridTable, GridSubTable } from './GridTable';
 export type { GridTableProps } from './GridTable';
 
+// Generic, DOM-based, column-config + arbitrary-JSX-cell datagrid.
+// Use when you need rich custom cell rendering (color pills, hover popovers,
+// stepper inputs, badges) plus optional virtualization. The shop-specific
+// BulkOrderGrid is a specialization that composes this; harness panels can
+// also adopt it directly.
+export { default as RichGrid } from './RichGrid';
+export type {
+  RichGridProps,
+  ColumnDef,
+  CellRenderContext,
+  ColumnAlign,
+  SortState as RichGridSortState,
+  SortDir as RichGridSortDir,
+  VirtualMode as RichGridVirtualMode,
+} from './RichGrid';
+
 // Hover-expand state machine
 export { useHoverExpand } from './use-hover-expand';
+
+// Generic client-side sort helper for RichGrid consumers (small datasets;
+// pushed into the data source for larger ones).
+export { applySort } from './sort-util';
 export type { UseHoverExpandOptions, HoverExpandHandle } from './use-hover-expand';
