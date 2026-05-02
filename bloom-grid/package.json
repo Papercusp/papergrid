@@ -22,7 +22,7 @@
   },
   "peerDependencies": {
     "@tanstack/react-query": "^5.0.0",
-    "react": "^18.0.0"
+    "react": "^18 || ^19"
   },
   "peerDependenciesMeta": {
     "@tanstack/react-query": {
@@ -36,6 +36,10 @@
     "bloom-filters": "^3.0.4"
   },
   "devDependencies": {
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.5",
+    "@papercusp/test-config": "*"
+  },
+  "scripts": {
+    "test": "vitest run"
   }
 }

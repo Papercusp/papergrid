@@ -4,7 +4,9 @@
   "description": "Domain-agnostic datagrid primitives: GridTable, DataGridShell, grid-config, grid-theme, use-hover-expand.",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "sideEffects": ["**/*.css"],
+  "sideEffects": [
+    "**/*.css"
+  ],
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -13,10 +15,18 @@
     }
   },
   "peerDependencies": {
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19"
   },
   "dependencies": {
     "@glideapps/glide-data-grid": "^6.0.3"
+  },
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "bench": "vitest bench --run"
+  },
+  "devDependencies": {
+    "@papercusp/test-config": "*",
+    "vitest": "^4.1.4"
   }
 }
