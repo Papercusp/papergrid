@@ -84,8 +84,8 @@ export interface ColumnDef<TRow> {
    * affordance (action buttons, icons).
    */
   toCopyText?: (row: TRow) => string;
-  /** Column width in CSS-grid track units (number → fractional with same total). */
-  width: number;
+  /** Column width as CSS-grid track: number → fr, string → fixed/minmax track. */
+  width: number | string;
   /** How cells in this column are aligned. Default 'left'. */
   align?: ColumnAlign;
   /**
@@ -329,7 +329,7 @@ function rowBgFor(index: number, isSelected: boolean): string {
 function buildGridTemplate(columns: ColumnDef<unknown>[], hasSelectionCol: boolean): string {
   const tracks: string[] = [];
   if (hasSelectionCol) tracks.push('40px');
-  for (const c of columns) tracks.push(`${c.width}fr`);
+  for (const c of columns) tracks.push(typeof c.width === 'number' ? `${c.width}fr` : c.width);
   return tracks.join(' ');
 }
 
