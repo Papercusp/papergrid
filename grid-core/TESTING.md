@@ -2,22 +2,23 @@
 
 ## What this project's tests cover
 
-- (none yet) — drop `*.test.ts` files alongside source and they'll be picked up by `npm test`.
+- `src/sort-util.bench.ts` — Vitest bench for `applySort` (the hottest
+  pure function in the grid path). Numeric/string columns × 100/1k/10k
+  rows, plus the null-state fast-path. Per testing-spec §1.12; runs
+  in nightly CI (informational, not gating).
 
 ## What they don't cover (yet)
 
-- No tests exist yet — see "Run after editing" below for how to add them.
+- Render-path benches for RichGrid row mount + cell-renderer churn —
+  needs jsdom + @testing-library/react setup; planned next.
+- Browser flows — verified ad-hoc via the `verdict` skill.
 
 ## Run after editing
 
-| Edit touches                        | Run                                                       |
-| ----------------------------------- | --------------------------------------------------------- |
-| Anything in this workspace          | `npm test --workspace @restart/grid-core`              |
-| Code that other workspaces depend on| `npm run test:affected` from repo root             |
+| Edit touches                        | Run                                                   |
+| ----------------------------------- | ----------------------------------------------------- |
+| `src/sort-util.ts`                  | `npm run bench --workspace @restart/grid-core`        |
+| Any source file                     | `npm test --workspace @restart/grid-core`             |
+| Code that other workspaces depend on| `npm run test:affected` from repo root               |
 
-See repo-root `CLAUDE.md` (`Tests after editing` block) and the unified
-testing spec at `http://localhost:3055/docs/testing` for the full
-strategy.
-
----
-*Scaffolded 2026-05-07 by `scripts/gen-testing-md.mjs`. Replace this footer when you've filled in real coverage notes.*
+See repo-root `CLAUDE.md` for the full testing strategy.

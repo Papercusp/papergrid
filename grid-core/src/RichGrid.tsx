@@ -44,6 +44,7 @@ import {
 } from 'react';
 import type { Virtualizer } from '@tanstack/virtual-core';
 import { GRID_COLORS } from './grid-theme';
+import { buildCopyPayloads, headerTextFor, cellTextFor } from './copy-payloads';
 
 // ─── Public API types ───────────────────────────────────────────────────────
 
@@ -69,6 +70,20 @@ export interface ColumnDef<TRow> {
   key: string;
   /** Header content. Can be a string or arbitrary JSX (e.g. icon + label). */
   header: ReactNode;
+  /**
+   * Plain-text representation of the header for the print mirror + copy
+   * payloads (Ctrl+C, paste into Excel). Defaults to `header` if it's a
+   * string; if `header` is JSX, supply this for spreadsheet fidelity.
+   */
+  headerText?: string;
+  /**
+   * Plain-text representation of this column's value for `row` — used by
+   * the print mirror and the Ctrl+C TSV/HTML payload. Optional; columns
+   * without it print/copy empty for that cell. Provide whenever the cell
+   * has meaningful text (status, name, count); skip when the cell is pure
+   * affordance (action buttons, icons).
+   */
+  toCopyText?: (row: TRow) => string;
   /** Column width in CSS-grid track units (number → fractional with same total). */
   width: number;
   /** How cells in this column are aligned. Default 'left'. */
@@ -221,6 +236,77 @@ export interface RichGridProps<TRow> {
   style?: CSSProperties;
   /** Extra className for the outer container. */
   className?: string;
+
+  /**
+   * Print fidelity (Pattern A: print-only `<table>` mirror).
+   *
+   * On `@media print`, RichGrid's virtualized div tree only contains the
+   * rows currently in view — which prints as a snapshot of the viewport,
+   * not the dataset. To fix that, RichGrid renders a hidden native `<table>`
+   * alongside the grid; on print, the virtualized grid hides and the
+   * native table shows. The browser handles pagination + repeating `<thead>`.
+   *
+   * Default: enabled for legacy (non-virtual) mode. In virtual mode,
+   * pass `printRows` with the full dataset to also enable; otherwise the
+   * print mirror is skipped (and Ctrl+P prints just the viewport).
+   */
+  disablePrintMirror?: boolean;
+  /**
+   * Virtual-mode only: the full dataset for the print mirror. RichGrid's
+   * normal `rowAt(index)` API is for lazy loading; printing needs every
+   * row up front. If omitted in virtual mode, no print mirror is rendered.
+   */
+  printRows?: TRow[];
+
+  /**
+   * Copy support (Ctrl+C → TSV + HTML clipboard payload).
+   *
+   * When the grid root has keyboard focus, Ctrl+A selects all rows and
+   * Ctrl+C copies the current row selection (or all rows if none selected)
+   * to the clipboard as both TSV (`text/plain`) and `<table>` markup
+   * (`text/html`). Excel / Sheets prefer the HTML payload and paste rows
+   * into cells correctly; plain editors get TSV.
+   *
+   * Default: enabled. Set `disableCopySupport` to opt out for grids where
+   * Ctrl+C should fall through to native browser text selection.
+   */
+  disableCopySupport?: boolean;
+}
+
+// ─── Print mirror style injection ───────────────────────────────────────────
+
+/**
+ * One-time CSS injection for the print mirror. Lives in the global stylesheet
+ * because @media print rules can't go in inline style. Idempotent — calling
+ * from multiple RichGrid instances on the same page injects once.
+ */
+const PRINT_MIRROR_STYLE_ID = '__rg_print_mirror_css';
+const PRINT_MIRROR_CSS = `
+[data-rg-print-mirror] { display: none; }
+@media print {
+  [data-rg-screen-grid] { display: none !important; }
+  [data-rg-print-mirror] { display: table !important; width: 100%; border-collapse: collapse; }
+  [data-rg-print-mirror] thead { display: table-header-group; }
+  [data-rg-print-mirror] tr { break-inside: avoid; page-break-inside: avoid; }
+  [data-rg-print-mirror] th,
+  [data-rg-print-mirror] td {
+    border: 1px solid #ccc;
+    padding: 4px 6px;
+    text-align: left;
+    font-size: 11px;
+    color: #000;
+  }
+  [data-rg-print-mirror] th { background: #eee; font-weight: 600; }
+}
+`;
+
+function ensurePrintMirrorStyleInjected(): void {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(PRINT_MIRROR_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = PRINT_MIRROR_STYLE_ID;
+  style.textContent = PRINT_MIRROR_CSS;
+  document.head.appendChild(style);
 }
 
 // ─── Internal helpers ───────────────────────────────────────────────────────
@@ -488,6 +574,9 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
     headerHeight = 36,
     style,
     className,
+    disablePrintMirror = false,
+    printRows,
+    disableCopySupport = false,
   } = props;
 
   const resolveRowBg = useCallback(
@@ -762,7 +851,102 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
     );
   }
 
+  // ─── Print mirror + copy support ──────────────────────────────────────────
+
+  // The full row set for print + copy:
+  //   - legacy mode → `rows` (the only source we have)
+  //   - virtual mode → `printRows` if the caller supplied one, else null
+  //
+  // Notes on memo: when neither rows nor printRows change, we want the
+  // payload-building closures (copyHandler) to stay identity-stable.
+  const printableRows: readonly TRow[] | null = virtualMode
+    ? printRows ?? null
+    : rows ?? null;
+  const printMirrorEnabled =
+    !disablePrintMirror && printableRows !== null && printableRows.length > 0;
+
+  // Inject the print stylesheet once, lazily on first instance that needs it.
+  useEffect(() => {
+    if (printMirrorEnabled) ensurePrintMirrorStyleInjected();
+  }, [printMirrorEnabled]);
+
+  // Copy handler — wired as a `copy` listener on the root container. Builds
+  // both TSV and HTML payloads. Selection priority:
+  //   1. selectedRowIds (if any selected)
+  //   2. browser text selection (if user selected text inside the grid) —
+  //      we let the browser handle that case natively
+  //   3. all rows (Ctrl+A or empty selection but user wants a full copy)
+  const onCopy = useCallback(
+    (e: React.ClipboardEvent<HTMLDivElement>) => {
+      if (disableCopySupport) return;
+      // If the user has a non-empty text range selected, let the browser
+      // handle the copy (they're trying to grab specific text, not rows).
+      const sel = typeof window !== 'undefined' ? window.getSelection() : null;
+      if (sel && !sel.isCollapsed && sel.toString().trim().length > 0) return;
+      const baseRows = printableRows;
+      if (!baseRows || baseRows.length === 0) return;
+      const selected =
+        selectedRowIds.size > 0
+          ? baseRows.filter((r) => selectedRowIds.has(getRowId(r)))
+          : baseRows;
+      if (selected.length === 0) return;
+      const { tsv, html } = buildCopyPayloads(columns, selected);
+      e.clipboardData.setData('text/plain', tsv);
+      e.clipboardData.setData('text/html', html);
+      e.preventDefault();
+    },
+    [columns, disableCopySupport, getRowId, printableRows, selectedRowIds],
+  );
+
+  // Ctrl+A in the grid → select all rows (so the next Ctrl+C copies them).
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (disableCopySupport) return;
+      const isMac =
+        typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+      const ctrlOrMeta = isMac ? e.metaKey : e.ctrlKey;
+      if (!(ctrlOrMeta && (e.key === 'a' || e.key === 'A'))) return;
+      // Only intercept if focus is in the grid root itself, not in a
+      // child input/select/textarea (where Ctrl+A should select text).
+      const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      const baseRows = printableRows;
+      if (!baseRows || baseRows.length === 0) return;
+      e.preventDefault();
+      setSelectedRowIds(new Set(baseRows.map(getRowId)));
+    },
+    [disableCopySupport, getRowId, printableRows, setSelectedRowIds],
+  );
+
+  // Print mirror — a hidden native `<table>` next to the grid. Browser uses
+  // it on print; CSS in PRINT_MIRROR_CSS swaps display on @media print.
+  const printMirror = printMirrorEnabled ? (
+    <table data-rg-print-mirror aria-hidden="true">
+      <thead>
+        <tr>
+          {columns.map((c) => (
+            <th key={c.key}>{headerTextFor(c)}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {printableRows!.map((row) => (
+          <tr key={getRowId(row)}>
+            {columns.map((c) => (
+              <td key={c.key}>{cellTextFor(c, row)}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : null;
+
   if (inline) {
+    // Inline mode: the consumer owns the outer container (and the scroll
+    // element), so there's no place to hang the screen-grid hide rule. We
+    // skip the print mirror + copy support here; consumers in inline mode
+    // who need them should add an outer wrapper themselves (and they can
+    // do their own copy handling on it).
     return (
       <>
         {topSlot}
@@ -776,6 +960,10 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
   return (
     <div
       className={className}
+      data-rg-screen-grid
+      tabIndex={disableCopySupport ? undefined : 0}
+      onCopy={disableCopySupport ? undefined : onCopy}
+      onKeyDown={disableCopySupport ? undefined : onKeyDown}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -783,6 +971,7 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
         background: GRID_COLORS.bg,
         color: GRID_COLORS.text,
         fontFamily: GRID_COLORS.font,
+        outline: 'none',
         ...style,
       }}
     >
@@ -798,6 +987,7 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
         {body}
       </div>
       {footerSlot}
+      {printMirror}
     </div>
   );
 }

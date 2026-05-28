@@ -2,22 +2,20 @@
 
 ## What this project's tests cover
 
-- **2** spec file(s) (`*.spec.ts`).
+- `src/rowStore.spec.ts` — row-store upsert/get/delete invariants.
+- `src/server.spec.ts` — server-side bloom-filter helpers.
 
-## What they don't cover (yet)
+## What they don't cover
 
-- Owner: edit this section to call out un-tested behavior worth knowing about.
+- React render path — covered indirectly when the grid is mounted by
+  `@restart/grid` consumers.
+- Browser flows — verified via the `verdict` skill.
 
 ## Run after editing
 
-| Edit touches                        | Run                                                       |
-| ----------------------------------- | --------------------------------------------------------- |
-| Anything in this workspace          | `npm test --workspace @restart/bloom-grid`             |
-| Code that other workspaces depend on| `npm run test:affected` from repo root             |
+| Edit touches             | Run                                              |
+| ------------------------ | ------------------------------------------------ |
+| `src/**`                 | `npm test --workspace @restart/bloom-grid`       |
+| Anything that imports it | `npm run test:affected` from repo root           |
 
-See repo-root `CLAUDE.md` (`Tests after editing` block) and the unified
-testing spec at `http://localhost:3055/docs/testing` for the full
-strategy.
-
----
-*Scaffolded 2026-05-07 by `scripts/gen-testing-md.mjs`. Replace this footer when you've filled in real coverage notes.*
+See repo-root `CLAUDE.md` for the full testing strategy.
