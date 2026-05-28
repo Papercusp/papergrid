@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1778174983048" clover="3.2.0">
+  <project timestamp="1778174983049" name="All files">
+    <metrics statements="53" coveredstatements="49" conditionals="37" coveredconditionals="34" methods="21" coveredmethods="21" elements="111" coveredelements="104" complexity="0" loc="53" ncloc="53" packages="1" files="2" classes="2"/>
+    <file name="rowStore.ts" path="/home/marsh-office/Restart/libs/papergrid/bloom-grid/src/rowStore.ts">
+      <metrics statements="37" coveredstatements="35" conditionals="24" coveredconditionals="22" methods="15" coveredmethods="15"/>
+      <line num="9" count="2" type="stmt"/>
+      <line num="10" count="4" type="cond" truecount="4" falsecount="0"/>
+      <line num="11" count="2" type="cond" truecount="4" falsecount="1"/>
+      <line num="12" count="0" type="stmt"/>
+      <line num="14" count="0" type="stmt"/>
+      <line num="16" count="2" type="stmt"/>
+      <line num="39" count="8" type="cond" truecount="2" falsecount="0"/>
+      <line num="40" count="8" type="cond" truecount="2" falsecount="0"/>
+      <line num="42" count="8" type="stmt"/>
+      <line num="43" count="8" type="stmt"/>
+      <line num="44" count="8" type="stmt"/>
+      <line num="45" count="8" type="stmt"/>
+      <line num="47" count="8" type="stmt"/>
+      <line num="48" count="11" type="stmt"/>
+      <line num="49" count="11" type="stmt"/>
+      <line num="52" count="8" type="stmt"/>
+      <line num="54" count="9" type="cond" truecount="3" falsecount="1"/>
+      <line num="55" count="9" type="stmt"/>
+      <line num="56" count="17" type="stmt"/>
+      <line num="57" count="17" type="stmt"/>
+      <line num="59" count="9" type="stmt"/>
+      <line num="62" count="3" type="stmt"/>
+      <line num="65" count="3" type="stmt"/>
+      <line num="66" count="3" type="cond" truecount="2" falsecount="0"/>
+      <line num="69" count="5" type="cond" truecount="2" falsecount="0"/>
+      <line num="70" count="3" type="stmt"/>
+      <line num="73" count="1" type="stmt"/>
+      <line num="74" count="1" type="stmt"/>
+      <line num="75" count="1" type="stmt"/>
+      <line num="79" count="2" type="stmt"/>
+      <line num="82" count="2" type="stmt"/>
+      <line num="85" count="2" type="stmt"/>
+      <line num="86" count="2" type="stmt"/>
+      <line num="87" count="2" type="stmt"/>
+      <line num="90" count="1" type="stmt"/>
+      <line num="91" count="3" type="stmt"/>
+      <line num="92" count="3" type="cond" truecount="2" falsecount="0"/>
+    </file>
+    <file name="server.ts" path="/home/marsh-office/Restart/libs/papergrid/bloom-grid/src/server.ts">
+      <metrics statements="16" coveredstatements="14" conditionals="13" coveredconditionals="12" methods="6" coveredmethods="6"/>
+      <line num="4" count="1" type="stmt"/>
+      <line num="5" count="2" type="cond" truecount="4" falsecount="0"/>
+      <line num="6" count="1" type="cond" truecount="4" falsecount="1"/>
+      <line num="7" count="0" type="stmt"/>
+      <line num="9" count="0" type="stmt"/>
+      <line num="11" count="1" type="stmt"/>
+      <line num="35" count="4" type="stmt"/>
+      <line num="38" count="4" type="stmt"/>
+      <line num="46" count="4" type="cond" truecount="2" falsecount="0"/>
+      <line num="47" count="7" type="stmt"/>
+      <line num="54" count="2" type="stmt"/>
+      <line num="55" count="2" type="stmt"/>
+      <line num="56" count="10" type="stmt"/>
+      <line num="57" count="5" type="stmt"/>
+      <line num="60" count="4" type="stmt"/>
+      <line num="67" count="4" type="stmt"/>
+    </file>
+  </project>
+</coverage>
