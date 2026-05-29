@@ -15,10 +15,14 @@ function resolveBloomFilter(mod: any): any {
 }
 const BloomFilter = resolveBloomFilter(BloomFilterModule);
 import type { ManifestEntry, Versioned } from './protocol';
+import type { KvStorePersistence } from '@restart/kv-persist';
 
 /**
- * Optional durable backing for a row store. The in-memory store stays the
- * source of truth; the adapter mirrors row payloads to durable storage and
+ * Optional durable backing for a row store. This is just the generic
+ * `@restart/kv-persist` contract — persistence is intentionally NOT coupled to
+ * bloom-grid, so any KvStorePersistence implementation (e.g.
+ * @restart/kv-persist-indexeddb) can back the store. The in-memory store stays
+ * the source of truth; the adapter mirrors row payloads to durable storage and
  * rehydrates them when the store is created.
  *
  * CORRECTNESS CONTRACT: only versioned row payloads are persisted — never the
@@ -28,14 +32,7 @@ import type { ManifestEntry, Versioned } from './protocol';
  * `findMissing` flags it for refetch — so persisted rows can never go stale
  * undetected, no matter how long they sat in storage.
  */
-export interface RowStorePersistence<TRow extends Versioned> {
-  /** Rehydrate previously-persisted rows. Resolves to [] if none/unavailable. */
-  load(): Promise<TRow[]>;
-  /** Mirror these rows to durable storage (may batch/debounce internally). */
-  save(rows: TRow[]): void;
-  /** Drop all persisted rows. */
-  clear(): void;
-}
+export type RowStorePersistence<TRow extends Versioned> = KvStorePersistence<TRow>;
 
 export interface RowStoreOptions<TRow extends Versioned = Versioned> {
   capacity?: number;

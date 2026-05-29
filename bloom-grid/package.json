@@ -18,11 +18,6 @@
       "types": "./src/client.ts",
       "import": "./src/client.ts",
       "default": "./src/client.ts"
-    },
-    "./idb": {
-      "types": "./src/idbPersistence.ts",
-      "import": "./src/idbPersistence.ts",
-      "default": "./src/idbPersistence.ts"
     }
   },
   "peerDependencies": {
@@ -38,12 +33,12 @@
     }
   },
   "dependencies": {
-    "bloom-filters": "^3.0.4"
+    "bloom-filters": "^3.0.4",
+    "@restart/kv-persist": "*"
   },
   "devDependencies": {
     "vitest": "^4.1.5",
-    "@papercusp/test-config": "*",
-    "fake-indexeddb": "^6.2.5"
+    "@papercusp/test-config": "*"
   },
   "scripts": {
     "test": "vitest run"

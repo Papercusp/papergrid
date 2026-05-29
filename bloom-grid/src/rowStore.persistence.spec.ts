@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { createRowStore, type RowStorePersistence } from './rowStore';
-import { createIdbPersistence } from './idbPersistence';
 
 interface Row {
   id: string;
@@ -96,22 +95,5 @@ describe('createRowStore persistence wiring', () => {
     const store = createRowStore<Row>({ persistence: adapter });
     await expect(store.ready).resolves.toBeUndefined();
     expect(store.size()).toBe(0);
-  });
-});
-
-describe('createIdbPersistence without IndexedDB (SSR / unsupported)', () => {
-  it('returns a no-op adapter that loads nothing and never throws', async () => {
-    expect(typeof indexedDB).toBe('undefined'); // node test env
-    const adapter = createIdbPersistence<Row>({ dbName: 'test' });
-    await expect(adapter.load()).resolves.toEqual([]);
-    expect(() => adapter.save([{ id: 'a', v: 1, name: 'A' }])).not.toThrow();
-    expect(() => adapter.clear()).not.toThrow();
-  });
-
-  it('a store backed by the no-op adapter still works in-memory', async () => {
-    const store = createRowStore<Row>({ persistence: createIdbPersistence<Row>() });
-    await store.ready;
-    store.upsert([{ id: 'a', v: 1, name: 'A' }]);
-    expect(store.get('a')?.name).toBe('A');
   });
 });
