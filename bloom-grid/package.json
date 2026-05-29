@@ -42,7 +42,8 @@
   },
   "devDependencies": {
     "vitest": "^4.1.5",
-    "@papercusp/test-config": "*"
+    "@papercusp/test-config": "*",
+    "fake-indexeddb": "^6.2.5"
   },
   "scripts": {
     "test": "vitest run"

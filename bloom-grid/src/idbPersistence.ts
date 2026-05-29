@@ -83,7 +83,18 @@ export function createIdbPersistence<TRow extends Versioned>(
         }
         db.createObjectStore(storeName, { keyPath: 'id' });
       };
-      req.onsuccess = () => resolve(req.result);
+      req.onsuccess = () => {
+        const db = req.result;
+        // If another connection (e.g. a new tab, or this app after a
+        // schemaVersion bump) needs to upgrade, close ours so it isn't
+        // blocked. Drop the cached promise so the next op transparently
+        // reopens at the new version.
+        db.onversionchange = () => {
+          db.close();
+          dbPromise = null;
+        };
+        resolve(db);
+      };
       req.onerror = () => reject(req.error);
       req.onblocked = () => reject(new Error('indexedDB open blocked'));
     });
