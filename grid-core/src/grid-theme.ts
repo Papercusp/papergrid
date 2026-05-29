@@ -9,18 +9,18 @@ import type { Theme } from '@glideapps/glide-data-grid';
 // ─── Palette ─────────────────────────────────────────────────────────────────
 
 export const GRID_COLORS = {
-  bg:         '#0f1422',    // base cell background — deeper, less blue-cast
-  headerBg:   '#0a0e18',    // column header row — near-black for clear hierarchy
-  rowAlt:     '#121828',    // every other row (subtle, almost flat for modern feel)
-  rowHover:   '#1a2236',    // hover / focus highlight
-  border:     '#1f2738',    // all dividers — softer, less saturated
-  text:       '#e7ecf3',    // primary cell text — slightly warmer
-  muted:      '#8a96ad',    // secondary / header text
-  editBg:     '#162236',    // editable cell background
-  editBorder: '#3b82f6',    // editable cell border (blue)
+  bg:         '#101d30',    // base cell background — frost navy, lifted off black
+  headerBg:   '#0c1626',    // column header row — deepest tier for clear hierarchy
+  rowAlt:     '#13233a',    // every other row (subtle frost stripe)
+  rowHover:   '#1d3450',    // hover / focus highlight
+  border:     '#284a66',    // all dividers — cyan-tinted frost border
+  text:       '#e7f7ff',    // primary cell text — frost cyan-white
+  muted:      '#9db4cf',    // secondary / header text
+  editBg:     '#173350',    // editable cell background
+  editBorder: '#38bdf8',    // editable cell border (sky-cyan, matches accent)
   amber:      '#fbbf24',
-  red:        '#f87171',
-  blue:       '#7aa2f7',
+  red:        '#fb7185',
+  blue:       '#38bdf8',
   green:      '#34d399',
   // Font stacks
   font:      "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
@@ -56,7 +56,7 @@ export const glideTheme: Partial<Theme> = {
 export const EDIT_INPUT_STYLE: React.CSSProperties = {
   width: '100%',
   height: '100%',
-  background: 'rgba(58,99,184,0.08)',
+  background: 'rgba(56,189,248,0.08)',
   border: `1px solid ${GRID_COLORS.editBorder}55`,
   borderRadius: 8,
   color: GRID_COLORS.text,
