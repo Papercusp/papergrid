@@ -18,6 +18,11 @@
       "types": "./src/client.ts",
       "import": "./src/client.ts",
       "default": "./src/client.ts"
+    },
+    "./idb": {
+      "types": "./src/idbPersistence.ts",
+      "import": "./src/idbPersistence.ts",
+      "default": "./src/idbPersistence.ts"
     }
   },
   "peerDependencies": {

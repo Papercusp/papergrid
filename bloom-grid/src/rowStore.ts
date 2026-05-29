@@ -16,9 +16,32 @@ function resolveBloomFilter(mod: any): any {
 const BloomFilter = resolveBloomFilter(BloomFilterModule);
 import type { ManifestEntry, Versioned } from './protocol';
 
-export interface RowStoreOptions {
+/**
+ * Optional durable backing for a row store. The in-memory store stays the
+ * source of truth; the adapter mirrors row payloads to durable storage and
+ * rehydrates them when the store is created.
+ *
+ * CORRECTNESS CONTRACT: only versioned row payloads are persisted — never the
+ * manifest. The manifest (the current `{id, v}` set for a query) is always
+ * re-fetched from the server, so a persisted row is only ever trusted for its
+ * exact `id:v`. When the server reports a newer `v`, the bloom misses it and
+ * `findMissing` flags it for refetch — so persisted rows can never go stale
+ * undetected, no matter how long they sat in storage.
+ */
+export interface RowStorePersistence<TRow extends Versioned> {
+  /** Rehydrate previously-persisted rows. Resolves to [] if none/unavailable. */
+  load(): Promise<TRow[]>;
+  /** Mirror these rows to durable storage (may batch/debounce internally). */
+  save(rows: TRow[]): void;
+  /** Drop all persisted rows. */
+  clear(): void;
+}
+
+export interface RowStoreOptions<TRow extends Versioned = Versioned> {
   capacity?: number;
   fpRate?: number;
+  /** Durable backing store. When omitted the store is in-memory only. */
+  persistence?: RowStorePersistence<TRow>;
 }
 
 export interface RowStore<TRow extends Versioned> {
@@ -31,13 +54,21 @@ export interface RowStore<TRow extends Versioned> {
   size(): number;
   clear(): void;
   findMissing(manifest: ManifestEntry[]): ManifestEntry[];
+  /**
+   * Resolves once initial rehydration from persistence has completed (or
+   * immediately when there is no persistence). Await this before building a
+   * bloom for the first server request, otherwise the rehydrated rows aren't
+   * in the bloom yet and the server re-downloads them.
+   */
+  ready: Promise<void>;
 }
 
 export function createRowStore<TRow extends Versioned>(
-  opts: RowStoreOptions = {},
+  opts: RowStoreOptions<TRow> = {},
 ): RowStore<TRow> {
   const capacity = opts.capacity ?? 20_000;
   const fpRate = opts.fpRate ?? 0.01;
+  const persistence = opts.persistence;
 
   let store = new Map<string, TRow>();
   let bloom = BloomFilter.create(capacity, fpRate);
@@ -49,13 +80,40 @@ export function createRowStore<TRow extends Versioned>(
     subs.forEach((fn) => fn());
   };
 
+  // Apply rows to the in-memory store + bloom WITHOUT writing back to
+  // persistence — shared by upsert() and by rehydration.
+  const applyRows = (rows: TRow[]) => {
+    for (const r of rows) {
+      store.set(r.id, r);
+      bloom.add(`${r.id}:${r.v}`);
+    }
+  };
+
+  // Rehydrate from persistence (if any). `ready` lets callers gate their first
+  // bloom-backed request on hydration so cached rows aren't re-downloaded.
+  let resolveReady!: () => void;
+  const ready = new Promise<void>((res) => { resolveReady = res; });
+  if (persistence) {
+    void persistence
+      .load()
+      .then((rows) => {
+        if (rows && rows.length > 0) {
+          applyRows(rows);
+          notify();
+        }
+      })
+      .catch(() => { /* best-effort — fall back to an empty store */ })
+      .finally(() => resolveReady());
+  } else {
+    resolveReady();
+  }
+
   return {
+    ready,
     upsert(rows) {
       if (!rows || rows.length === 0) return;
-      for (const r of rows) {
-        store.set(r.id, r);
-        bloom.add(`${r.id}:${r.v}`);
-      }
+      applyRows(rows);
+      persistence?.save(rows);
       notify();
     },
     get(id) {
@@ -84,6 +142,7 @@ export function createRowStore<TRow extends Versioned>(
     clear() {
       store = new Map();
       bloom = BloomFilter.create(capacity, fpRate);
+      persistence?.clear();
       notify();
     },
     findMissing(manifest) {
