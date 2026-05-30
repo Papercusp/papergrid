@@ -1,5 +1,7 @@
 {
   "name": "papergrid",
+  "version": "0.1.0",
   "private": true,
+  "description": "Workspaces meta-package for the Papercusp data-grid stack: @restart/grid-core (sort/selection/virtualization logic), @restart/bloom-grid (row store + server render), and @restart/grid. Consumers depend on the sub-packages directly.",
   "workspaces": ["grid-core", "grid", "bloom-grid"]
 }
