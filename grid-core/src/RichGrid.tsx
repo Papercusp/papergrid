@@ -132,6 +132,14 @@ export interface RichGridProps<TRow> {
 
   /** Show a checkbox column on the left for multi-row selection. */
   selectable?: boolean;
+
+  /**
+   * Allow the user to drag column borders to resize columns. Opt-in — when
+   * off (default) header cells render exactly as before, so existing grids
+   * are unaffected. Resized widths live in RichGrid's internal state
+   * (reset on remount).
+   */
+  resizableColumns?: boolean;
   /** Controlled selection (row IDs). When omitted, selection is uncontrolled. */
   selectedRowIds?: ReadonlySet<string>;
   onSelectedRowIdsChange?: (next: ReadonlySet<string>) => void;
@@ -326,10 +334,21 @@ function rowBgFor(index: number, isSelected: boolean): string {
   return index % 2 === 0 ? GRID_COLORS.bg : GRID_COLORS.rowAlt;
 }
 
-function buildGridTemplate(columns: ColumnDef<unknown>[], hasSelectionCol: boolean): string {
+/** Min width (px) a column can be dragged to when resizing. */
+const MIN_COL_WIDTH = 40;
+
+function buildGridTemplate(
+  columns: ColumnDef<unknown>[],
+  hasSelectionCol: boolean,
+  overrides: Record<string, number> = {},
+): string {
   const tracks: string[] = [];
   if (hasSelectionCol) tracks.push('40px');
-  for (const c of columns) tracks.push(typeof c.width === 'number' ? `${c.width}fr` : c.width);
+  for (const c of columns) {
+    const ov = overrides[c.key];
+    if (typeof ov === 'number') tracks.push(`${ov}px`);
+    else tracks.push(typeof c.width === 'number' ? `${c.width}fr` : c.width);
+  }
   return tracks.join(' ');
 }
 
@@ -361,14 +380,23 @@ interface HeaderCellProps<TRow> {
   col: ColumnDef<TRow>;
   sortState: SortState | null | undefined;
   onSortChange?: (next: SortState | null) => void;
+  /** Show a drag handle on the right edge to resize this column. */
+  resizable?: boolean;
+  /** Called during a resize drag with the column key + new px width. */
+  onResize?: (key: string, width: number) => void;
 }
 
-function HeaderCell<TRow>({ col, sortState, onSortChange }: HeaderCellProps<TRow>) {
+function HeaderCell<TRow>({ col, sortState, onSortChange, resizable, onResize }: HeaderCellProps<TRow>) {
+  const cellRef = useRef<HTMLElement | null>(null);
+  const setCellRef = (el: HTMLElement | null) => {
+    cellRef.current = el;
+  };
   const sortable = !!col.sortKey && !!onSortChange;
   const active = sortable && sortState?.column === col.sortKey;
   const iconState: 'inactive' | 'asc' | 'desc' = active ? sortState!.dir : 'inactive';
 
   const cellStyle: CSSProperties = {
+    position: 'relative',
     display: 'flex',
     alignItems: 'center',
     justifyContent: justifyFor(col.align),
@@ -383,12 +411,54 @@ function HeaderCell<TRow>({ col, sortState, onSortChange }: HeaderCellProps<TRow
     userSelect: 'none',
   };
 
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startW = cellRef.current?.getBoundingClientRect().width ?? 0;
+    const move = (ev: PointerEvent) => {
+      onResize?.(col.key, Math.max(MIN_COL_WIDTH, Math.round(startW + (ev.clientX - startX))));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      document.body.style.cursor = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  const handle = resizable ? (
+    <div
+      onPointerDown={startResize}
+      onClick={(e) => e.stopPropagation()}
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        height: '100%',
+        width: 7,
+        cursor: 'col-resize',
+        touchAction: 'none',
+        zIndex: 3,
+      }}
+    />
+  ) : null;
+
   if (!sortable) {
-    return <div className={col.headerClassName} style={cellStyle}>{col.header}</div>;
+    return (
+      <div ref={setCellRef} className={col.headerClassName} style={cellStyle}>
+        {col.header}
+        {handle}
+      </div>
+    );
   }
 
   return (
     <button
+      ref={setCellRef}
       type="button"
       className={col.headerClassName}
       onClick={() => {
@@ -412,6 +482,7 @@ function HeaderCell<TRow>({ col, sortState, onSortChange }: HeaderCellProps<TRow
     >
       {col.header}
       <SortIcon state={iconState} />
+      {handle}
     </button>
   );
 }
@@ -549,6 +620,7 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
     rows,
     virtualMode,
     selectable = false,
+    resizableColumns = false,
     selectedRowIds: controlledSelected,
     onSelectedRowIdsChange,
     onRowClick,
@@ -622,9 +694,15 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
     [selectedRowIds, setSelectedRowIds],
   );
 
+  // Per-column px width overrides set by dragging the header resize handles.
+  const [widthOverrides, setWidthOverrides] = useState<Record<string, number>>({});
+  const handleColumnResize = useCallback((key: string, width: number) => {
+    setWidthOverrides((prev) => (prev[key] === width ? prev : { ...prev, [key]: width }));
+  }, []);
+
   const gridTemplateColumns = useMemo(
-    () => buildGridTemplate(columns as ColumnDef<unknown>[], selectable),
-    [columns, selectable],
+    () => buildGridTemplate(columns as ColumnDef<unknown>[], selectable, widthOverrides),
+    [columns, selectable, widthOverrides],
   );
 
   const isVirtual = !!virtualMode;
@@ -694,7 +772,14 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
         </div>
       )}
       {columns.map((col) => (
-        <HeaderCell key={col.key} col={col} sortState={sortState} onSortChange={onSortChange} />
+        <HeaderCell
+          key={col.key}
+          col={col}
+          sortState={sortState}
+          onSortChange={onSortChange}
+          resizable={resizableColumns}
+          onResize={handleColumnResize}
+        />
       ))}
     </div>
   );
