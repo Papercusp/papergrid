@@ -1,3 +1,37 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuites name="vitest tests" tests="0" failures="0" errors="0" time="0">
+<testsuites name="vitest tests" tests="16" failures="0" errors="0" time="0.007855903">
+    <testsuite name="src/copy-payloads.test.ts" timestamp="2026-05-21T17:52:20.099Z" hostname="main-server-Precision-7865-Tower" tests="16" failures="0" errors="0" skipped="0" time="0.007855903">
+        <testcase classname="src/copy-payloads.test.ts" name="headerTextFor &gt; uses headerText override when present" time="0.001952897">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="headerTextFor &gt; falls back to header when header is a string" time="0.000319326">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="headerTextFor &gt; falls back to column key when header is JSX" time="0.000291974">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="headerTextFor &gt; stringifies a numeric header" time="0.000196809">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="cellTextFor &gt; returns toCopyText() when present" time="0.000231016">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="cellTextFor &gt; returns empty string for columns without toCopyText" time="0.000167112">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="escapeHtml &gt; escapes the five XML entities" time="0.000190367">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="escapeHtml &gt; passes plain text through unchanged" time="0.000133267">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="escapeTsvCell &gt; replaces tabs with single space" time="0.000244101">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="escapeTsvCell &gt; replaces newlines with single space" time="0.000216468">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="escapeTsvCell &gt; collapses runs of whitespace-breaking chars to one space" time="0.00017105">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="buildCopyPayloads &gt; emits a TSV header row + one TSV row per data row" time="0.00098982">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="buildCopyPayloads &gt; emits a real &lt;table&gt; in the HTML payload" time="0.000437423">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="buildCopyPayloads &gt; escapes HTML-special characters in cell values" time="0.000229071">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="buildCopyPayloads &gt; handles empty row set (header row only)" time="0.000183684">
+        </testcase>
+        <testcase classname="src/copy-payloads.test.ts" name="buildCopyPayloads &gt; preserves row order" time="0.000201929">
+        </testcase>
+    </testsuite>
 </testsuites>
