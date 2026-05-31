@@ -5,7 +5,7 @@ export type {
   BloomQueryResponse,
 } from './protocol';
 export { createRowStore } from './rowStore';
-export type { RowStore, RowStoreOptions } from './rowStore';
+export type { RowStore, RowStoreOptions, RowStorePersistence } from './rowStore';
 // Server helper re-exported here because shop-api's tsconfig uses
 // `moduleResolution: node10` which does not honour `exports` subpaths.
 // The bloom filter is pure JS — no client-bundle cost.
