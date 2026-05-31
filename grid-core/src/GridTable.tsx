@@ -7,7 +7,7 @@
  * (stepper, price, checkbox) are declared via the `type` field on
  * GridTableColumn — no per-consumer JSX required.
  *
- * @module @restart/grid/GridTable
+ * @module @papercusp/grid/GridTable
  */
 import React, { useCallback, useMemo, useState } from 'react';
 import { useHoverExpand } from './use-hover-expand';

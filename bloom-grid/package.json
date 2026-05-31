@@ -1,5 +1,5 @@
 {
-  "name": "@restart/bloom-grid",
+  "name": "@papercusp/bloom-grid",
   "version": "0.0.1",
   "private": true,
   "description": "Bloom-filter-backed grid data layer: a versioned row store, a server-side bloom-query handler, and client React hooks (useBloomQuery / useInfiniteBloomQuery) for incremental sync of large cold catalogs. Part of the Papercusp grid stack.",

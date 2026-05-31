@@ -1,5 +1,5 @@
 /**
- * Shared visual design tokens for all grid components in @restart/grid.
+ * Shared visual design tokens for all grid components in @papercusp/grid.
  *
  * Both BulkOrderGrid (HTML table) and DataGridShell (Glide canvas grid) import
  * from here so a single colour/font change propagates everywhere.

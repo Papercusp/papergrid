@@ -1,4 +1,4 @@
-# @restart/bloom-grid
+# @papercusp/bloom-grid
 
 Search-driven grid for very large cold catalogs. Client and server pieces
 that minimize bytes-on-the-wire by skipping rows the client already has.
@@ -57,14 +57,14 @@ import {
   type ManifestEntry,
   type BloomQueryRequest,
   type BloomQueryResponse,
-} from '@restart/bloom-grid';
+} from '@papercusp/bloom-grid';
 
 // Client (in a 'use client' module):
-import { useBloomQuery, useInfiniteBloomQuery } from '@restart/bloom-grid/client';
+import { useBloomQuery, useInfiniteBloomQuery } from '@papercusp/bloom-grid/client';
 ```
 
 `useBloomQuery` is **not** re-exported from the package root — only from
-`@restart/bloom-grid/client`. The reason: server routes that import the
+`@papercusp/bloom-grid/client`. The reason: server routes that import the
 root pull in the rest of the package (which is pure JS, no React), while
 the client hooks are gated behind `'use client'`. Server bundles never
 load the React deps.
@@ -72,7 +72,7 @@ load the React deps.
 ## Server-side wiring
 
 ```ts
-import { createBloomHandler } from '@restart/bloom-grid';
+import { createBloomHandler } from '@papercusp/bloom-grid';
 
 const handle = createBloomHandler<Product, ProductFilter>({
   loadManifest: ({ filter, sort, limit, offset }) =>
@@ -100,7 +100,7 @@ monotonic version counter on the row.
 
 ```tsx
 'use client';
-import { useBloomQuery } from '@restart/bloom-grid/client';
+import { useBloomQuery } from '@papercusp/bloom-grid/client';
 
 function Catalog({ filter }: { filter: ProductFilter }) {
   const { rows, total, isLoading } = useBloomQuery<Product, ProductFilter>({

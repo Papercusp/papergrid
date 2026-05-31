@@ -1,8 +1,8 @@
 {
-  "name": "@restart/grid",
+  "name": "@papercusp/grid",
   "version": "0.0.1",
   "private": true,
-  "description": "Backward-compat re-export of @restart/grid-core (kept while consumers migrate to importing grid-core directly). Part of the Papercusp grid stack.",
+  "description": "Backward-compat re-export of @papercusp/grid-core (kept while consumers migrate to importing grid-core directly). Part of the Papercusp grid stack.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "sideEffects": [
@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@glideapps/glide-data-grid": "^6.0.3",
-    "@restart/grid-core": "*"
+    "@papercusp/grid-core": "*"
   },
   "scripts": {
     "test": "vitest run --passWithNoTests"

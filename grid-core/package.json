@@ -1,5 +1,5 @@
 {
-  "name": "@restart/grid-core",
+  "name": "@papercusp/grid-core",
   "version": "0.0.1",
   "private": true,
   "description": "Domain-agnostic datagrid primitives: GridTable, DataGridShell, grid-config, grid-theme, use-hover-expand.",

@@ -1,4 +1,4 @@
-# @restart/grid-core
+# @papercusp/grid-core
 
 The shared, domain-agnostic grid primitives. Three rendering strategies, one
 theme, one sort helper.
@@ -11,7 +11,7 @@ import {
   applySort,          // generic client-side sort helper
   useHoverExpand,     // debounced hover-expand state machine
   GRID_COLORS,        // theme tokens
-} from '@restart/grid-core';
+} from '@papercusp/grid-core';
 ```
 
 ## At a glance
@@ -23,7 +23,7 @@ import {
 | **`GridTable`** | Native `<table>` | Declarative cell types via column `type:` | None | Admin pages, CSV-style displays, low row counts (<200) | Whatever the browser handles |
 
 If you find yourself reaching for *both* JSX cells *and* 100k rows, you're in
-the wrong place — that's the `@restart/bloom-grid` use case.
+the wrong place — that's the `@papercusp/bloom-grid` use case.
 
 ---
 
@@ -44,7 +44,7 @@ The grid does CSS-grid layout via `gridTemplateColumns` derived from column
 widths.
 
 ```tsx
-import { RichGrid, type ColumnDef } from '@restart/grid-core';
+import { RichGrid, type ColumnDef } from '@papercusp/grid-core';
 
 interface Project {
   id: string;
@@ -162,7 +162,7 @@ You pass `headers`, `data`, optional formatters, and selection handlers.
 You don't write `getCellContent` yourself.
 
 ```tsx
-import { DataGridShell } from '@restart/grid-core';
+import { DataGridShell } from '@papercusp/grid-core';
 
 <DataGridShell
   headers={['name', 'status', 'budgetCents', 'createdTs']}
@@ -215,7 +215,7 @@ but renders an actual `<table>` with built-in cell types (`stepper`,
 - You want SSR-rendered HTML in the first paint
 
 ```tsx
-import { GridTable } from '@restart/grid-core';
+import { GridTable } from '@papercusp/grid-core';
 
 <GridTable
   headers={['name', 'qty', 'priceCents', 'select']}

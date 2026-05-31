@@ -1,6 +1,6 @@
-// @restart/grid-core — domain-agnostic datagrid primitives.
+// @papercusp/grid-core — domain-agnostic datagrid primitives.
 // Consumers outside this monorepo can depend on this package alone;
-// @restart/grid adds shop-specific wrappers on top.
+// @papercusp/grid adds shop-specific wrappers on top.
 
 // Design tokens + theme
 export {

@@ -1,18 +1,18 @@
-// @restart/grid — thin compat re-export of @restart/grid-core, kept for
+// @papercusp/grid — thin compat re-export of @papercusp/grid-core, kept for
 // backward-compat while consumers gradually migrate to importing grid-core
 // directly.
 //
-// Shop-domain helpers moved to `@restart/ui` on 2026-04-26 — they did not
+// Shop-domain helpers moved to `@papercusp/ui` on 2026-04-26 — they did not
 // belong in the shared papergrid submodule. Update old imports:
 //
-//   - import { BulkOrderGrid }                  from '@restart/grid'
-//   + import { BulkOrderGrid }                  from '@restart/ui'
+//   - import { BulkOrderGrid }                  from '@papercusp/grid'
+//   + import { BulkOrderGrid }                  from '@papercusp/ui'
 //
 //   - import { formatCentsForRegion, getClientRegion, type Region }
-//                                               from '@restart/grid'
+//                                               from '@papercusp/grid'
 //   + import { formatCentsForRegion, getClientRegion, type Region }
-//                                               from '@restart/ui'
+//                                               from '@papercusp/ui'
 
-// Everything from @restart/grid-core: theme tokens, GridTable, DataGridShell,
+// Everything from @papercusp/grid-core: theme tokens, GridTable, DataGridShell,
 // grid-config, use-hover-expand, RichGrid.
-export * from '@restart/grid-core';
+export * from '@papercusp/grid-core';
