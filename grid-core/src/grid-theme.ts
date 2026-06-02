@@ -230,9 +230,29 @@ export let EXPAND_BTN_STYLE: React.CSSProperties = buildExpandBtn();
 /** Container for expanded sub-row content. */
 export let SUB_ROW_STYLE: React.CSSProperties = buildSubRow();
 
+// ─── Theme-change subscription (for live re-theming) ──────────────────────────
+// The canvas grid can't read CSS vars, so a host re-injects colours on theme
+// switch. These let React grid components re-render when that happens — see
+// `useGridTheme` (use-grid-theme.ts).
+
+let themeVersion = 0;
+const themeSubs = new Set<() => void>();
+
+/** Subscribe to `configureGridColors` calls. Returns an unsubscribe fn. */
+export function subscribeGridTheme(cb: () => void): () => void {
+  themeSubs.add(cb);
+  return () => themeSubs.delete(cb);
+}
+
+/** Monotonic counter bumped on every `configureGridColors` call. */
+export function getGridThemeVersion(): number {
+  return themeVersion;
+}
+
 /**
- * Inject host colours (e.g. from design tokens). Mutates the live palette and
- * rebuilds the derived style bindings — every importer sees the change.
+ * Inject host colours (e.g. from design tokens). Mutates the live palette,
+ * rebuilds the derived style bindings, and notifies subscribers so live grids
+ * re-render — every importer sees the change.
  */
 export function configureGridColors(colors: Partial<GridColors>): void {
   Object.assign(GRID_COLORS, colors);
@@ -248,6 +268,8 @@ export function configureGridColors(colors: Partial<GridColors>): void {
   STEPPER_INPUT_STYLE = buildStepperInput();
   EXPAND_BTN_STYLE = buildExpandBtn();
   SUB_ROW_STYLE = buildSubRow();
+  themeVersion++;
+  themeSubs.forEach((cb) => cb());
 }
 
 // ─── Colour-independent constants ────────────────────────────────────────────

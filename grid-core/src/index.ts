@@ -5,12 +5,14 @@
 // Theme — brand-neutral by default; hosts inject colours via configureGridColors.
 export {
   GRID_COLORS, glideTheme, configureGridColors,
+  subscribeGridTheme, getGridThemeVersion,
   EDIT_INPUT_STYLE, STEPPER_BTN_STYLE, STEPPER_PILL_STYLE, STEPPER_GLOBAL_CSS,
   TD_BASE, TH_BASE, TABLE_WRAPPER_STYLE, TABLE_STYLE, GRID_PANEL_STYLE,
   CHECKBOX_STYLE, STEPPER_INPUT_STYLE,
   badgeStyle, rowBg, stepperCSS, EXPAND_BTN_STYLE, SUB_ROW_STYLE,
 } from './grid-theme';
 export type { GridColors } from './grid-theme';
+export { useGridTheme } from './use-grid-theme';
 
 // Column / formatter config
 export * from './grid-config';

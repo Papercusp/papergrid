@@ -28,6 +28,7 @@ import {
   rowBg,
   stepperCSS,
 } from './grid-theme';
+import { useGridTheme } from './use-grid-theme';
 import {
   normalizeColumns,
   resolvePath,
@@ -358,6 +359,7 @@ export default function GridTable({
   header,
   footer,
 }: GridTableProps) {
+  useGridTheme(); // re-render when the host re-injects grid colours (runtime theme switch)
   // Normalize columns
   const columns: GridTableColumn[] = useMemo(() => {
     const raw = normalizeColumns(config.headers);

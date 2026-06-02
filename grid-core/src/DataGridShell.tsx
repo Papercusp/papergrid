@@ -56,6 +56,7 @@ import {
   STEPPER_PILL_STYLE,
   STEPPER_GLOBAL_CSS,
 } from './grid-theme';
+import { useGridTheme } from './use-grid-theme';
 
 export interface ButtonDef {
   label: string;
@@ -269,6 +270,7 @@ export default function DataGridShell({
   onRowClick,
   hideRowMarkers,
 }: DataGridShellProps) {
+  useGridTheme(); // re-render when the host re-injects grid colours (runtime theme switch)
   // Virtual mode: getRow + rowCount override data array
   const resolveRow = getRowProp ?? ((idx: number) => data[idx]);
   const effectiveRowCount = rowCountProp ?? data.length;
