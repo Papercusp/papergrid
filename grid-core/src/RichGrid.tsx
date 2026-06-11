@@ -436,15 +436,24 @@ function HeaderCell<TRow>({ col, sortState, onSortChange, resizable, onResize }:
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       document.body.style.cursor = '';
+      setHandleDrag(false);
     };
     document.body.style.cursor = 'col-resize';
+    setHandleDrag(true);
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
   };
 
+  // The hit strip stays 7px wide; the visible affordance is a divider line
+  // hugging the column edge — always present so column boundaries (and that
+  // they're grabbable) are discoverable, accent-highlighted while hovered
+  // or dragging.
+  const handleActive = handleHover || handleDrag;
   const handle = resizable ? (
     <div
       onPointerDown={startResize}
+      onPointerEnter={() => setHandleHover(true)}
+      onPointerLeave={() => setHandleHover(false)}
       onClick={(e) => e.stopPropagation()}
       aria-hidden="true"
       style={{
@@ -456,8 +465,21 @@ function HeaderCell<TRow>({ col, sortState, onSortChange, resizable, onResize }:
         cursor: 'col-resize',
         touchAction: 'none',
         zIndex: 3,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
       }}
-    />
+    >
+      <span
+        style={{
+          width: handleActive ? 3 : 1,
+          height: handleActive ? '100%' : '60%',
+          borderRadius: 2,
+          background: handleActive ? GRID_COLORS.blue : GRID_COLORS.border,
+          transition: 'background-color 100ms ease, width 100ms ease, height 100ms ease',
+        }}
+      />
+    </div>
   ) : null;
 
   if (!sortable) {
