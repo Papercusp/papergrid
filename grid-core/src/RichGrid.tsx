@@ -140,6 +140,15 @@ export interface RichGridProps<TRow> {
    * (reset on remount).
    */
   resizableColumns?: boolean;
+  /**
+   * Controlled column-width overrides (px, keyed by column key). When
+   * provided, RichGrid renders these widths and reports drags through
+   * `onColumnWidthsChange` instead of keeping internal state — the same
+   * controlled/uncontrolled split as `selectedRowIds`. Lets callers keep
+   * resized widths across remounts (see `usePersistedColumnWidths`).
+   */
+  columnWidths?: Record<string, number>;
+  onColumnWidthsChange?: (next: Record<string, number>) => void;
   /** Controlled selection (row IDs). When omitted, selection is uncontrolled. */
   selectedRowIds?: ReadonlySet<string>;
   onSelectedRowIdsChange?: (next: ReadonlySet<string>) => void;
@@ -621,6 +630,8 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
     virtualMode,
     selectable = false,
     resizableColumns = false,
+    columnWidths: controlledWidths,
+    onColumnWidthsChange,
     selectedRowIds: controlledSelected,
     onSelectedRowIdsChange,
     onRowClick,
@@ -695,10 +706,25 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
   );
 
   // Per-column px width overrides set by dragging the header resize handles.
-  const [widthOverrides, setWidthOverrides] = useState<Record<string, number>>({});
-  const handleColumnResize = useCallback((key: string, width: number) => {
-    setWidthOverrides((prev) => (prev[key] === width ? prev : { ...prev, [key]: width }));
-  }, []);
+  // Controlled when `columnWidths` is provided (the caller owns + persists the
+  // map), internal otherwise — the same split as the selection props.
+  const [internalWidths, setInternalWidths] = useState<Record<string, number>>({});
+  const widthOverrides = controlledWidths ?? internalWidths;
+  // Ref so the drag-loop merge sees the latest map (pointermove outpaces the
+  // controlled-parent re-render) without re-binding the handler per move.
+  const widthOverridesRef = useRef(widthOverrides);
+  widthOverridesRef.current = widthOverrides;
+  const handleColumnResize = useCallback(
+    (key: string, width: number) => {
+      if (onColumnWidthsChange) {
+        const cur = widthOverridesRef.current;
+        if (cur[key] !== width) onColumnWidthsChange({ ...cur, [key]: width });
+        return;
+      }
+      setInternalWidths((prev) => (prev[key] === width ? prev : { ...prev, [key]: width }));
+    },
+    [onColumnWidthsChange],
+  );
 
   const gridTemplateColumns = useMemo(
     () => buildGridTemplate(columns as ColumnDef<unknown>[], selectable, widthOverrides),

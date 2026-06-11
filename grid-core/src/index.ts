@@ -42,6 +42,11 @@ export type {
 // Hover-expand state machine
 export { useHoverExpand } from './use-hover-expand';
 
+// Persisted column widths — pairs with RichGrid's controlled
+// columnWidths/onColumnWidthsChange so drag-resized widths survive remounts.
+export { usePersistedColumnWidths } from './use-persisted-column-widths';
+export type { ColumnWidthStorage } from './use-persisted-column-widths';
+
 // Generic client-side sort helper for RichGrid consumers (small datasets;
 // pushed into the data source for larger ones).
 export { applySort } from './sort-util';

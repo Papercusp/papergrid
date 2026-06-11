@@ -83,3 +83,46 @@ describe('RichGrid (legacy rows mode)', () => {
     expect(onRowClick.mock.calls[0][0]).toMatchObject({ id: '1', name: 'Alice' });
   });
 });
+
+describe('RichGrid resizable columns (controlled)', () => {
+  it('renders controlled widths and reports drags via onColumnWidthsChange', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <RichGrid
+        columns={columns}
+        rows={rows}
+        getRowId={(r) => r.id}
+        resizableColumns
+        columnWidths={{ name: 222 }}
+        onColumnWidthsChange={onChange}
+      />,
+    );
+    // The controlled width feeds the grid template.
+    expect(container.innerHTML).toContain('222px');
+    // Drag the FIRST column's handle 200px right. jsdom boxes measure 0 wide,
+    // so the committed width is max(MIN_COL_WIDTH, 0 + 200) = 200.
+    const handle = container.querySelector('div[style*="col-resize"]') as HTMLElement;
+    expect(handle).toBeTruthy();
+    fireEvent.pointerDown(handle, { clientX: 100 });
+    fireEvent.pointerMove(window, { clientX: 300 });
+    fireEvent.pointerUp(window);
+    expect(onChange).toHaveBeenCalled();
+    const next = onChange.mock.calls.at(-1)![0] as Record<string, number>;
+    expect(next).toEqual({ name: 200 });
+    // Controlled: internal state must NOT have swallowed the drag — the
+    // rendered template still shows the caller's 222px until the caller
+    // round-trips a new columnWidths prop.
+    expect(container.innerHTML).toContain('222px');
+  });
+
+  it('uncontrolled mode keeps drag widths internally (no callback needed)', () => {
+    const { container } = render(
+      <RichGrid columns={columns} rows={rows} getRowId={(r) => r.id} resizableColumns />,
+    );
+    const handle = container.querySelector('div[style*="col-resize"]') as HTMLElement;
+    fireEvent.pointerDown(handle, { clientX: 0 });
+    fireEvent.pointerMove(window, { clientX: 150 });
+    fireEvent.pointerUp(window);
+    expect(container.innerHTML).toContain('150px');
+  });
+});
