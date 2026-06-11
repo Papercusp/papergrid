@@ -403,6 +403,10 @@ function HeaderCell<TRow>({ col, sortState, onSortChange, resizable, onResize }:
   const sortable = !!col.sortKey && !!onSortChange;
   const active = sortable && sortState?.column === col.sortKey;
   const iconState: 'inactive' | 'asc' | 'desc' = active ? sortState!.dir : 'inactive';
+  // Resize-handle affordance: hover highlights the divider; a drag keeps it
+  // highlighted even when the pointer drifts off the 7px hit strip.
+  const [handleHover, setHandleHover] = useState(false);
+  const [handleDrag, setHandleDrag] = useState(false);
 
   const cellStyle: CSSProperties = {
     position: 'relative',
