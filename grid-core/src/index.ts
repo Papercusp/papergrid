@@ -51,3 +51,27 @@ export type { ColumnWidthStorage } from './use-persisted-column-widths';
 // pushed into the data source for larger ones).
 export { applySort } from './sort-util';
 export type { UseHoverExpandOptions, HoverExpandHandle } from './use-hover-expand';
+
+// Generic, pure, dependency-free per-column FILTER engine for RichGrid
+// consumers (symmetric sibling of sort-util). The consumer holds the
+// ColumnFilterState (e.g. in a nuqs URL param) and calls applyColumnFilters
+// before passing rows in. ColumnDef.filter opts a column in.
+export {
+  applyColumnFilters,
+  deriveEnumOptions,
+  encodeColumnFilters,
+  decodeColumnFilters,
+  filterChipLabel,
+} from './column-filter';
+export type {
+  ColumnFilterSpec,
+  TextFilterSpec,
+  EnumFilterSpec,
+  NumberFilterSpec,
+  BooleanFilterSpec,
+  ColumnFilterValue,
+  NumberFilterValue,
+  ColumnFilterState,
+  FilterableColumn,
+  EnumOption,
+} from './column-filter';

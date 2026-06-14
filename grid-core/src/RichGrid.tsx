@@ -45,6 +45,7 @@ import {
 import type { Virtualizer } from '@tanstack/virtual-core';
 import { GRID_COLORS } from './grid-theme';
 import { buildCopyPayloads, headerTextFor, cellTextFor } from './copy-payloads';
+import type { ColumnFilterSpec } from './column-filter';
 
 // ─── Public API types ───────────────────────────────────────────────────────
 
@@ -106,6 +107,14 @@ export interface ColumnDef<TRow> {
   cellStyle?: CSSProperties | ((ctx: CellRenderContext<TRow>) => CSSProperties);
   /** Class name added to this column's HEADER cell. Useful for hover effects. */
   headerClassName?: string;
+  /**
+   * Opts this column into generic per-column filtering — the symmetric sibling
+   * of `sortKey`. The consumer holds the `ColumnFilterState` (typically a nuqs
+   * URL param) and calls `applyColumnFilters(rows, state, columns)` before
+   * passing rows in; RichGrid renders no filter UI and applies no predicate
+   * itself. See `./column-filter`.
+   */
+  filter?: ColumnFilterSpec<TRow>;
 }
 
 export interface VirtualMode<TRow> {
