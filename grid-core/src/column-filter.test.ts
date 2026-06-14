@@ -385,3 +385,36 @@ describe('filterChipLabel', () => {
     expect(filterChipLabel(cols[4], 'x')).toBe('');
   });
 });
+
+// ─── label fallback for icon-only columns (empty / non-string header) ─────────
+
+describe('column label fallback', () => {
+  it('falls back to headerText when header is an empty string', () => {
+    const col: FilterableColumn<Row> = {
+      key: 'live',
+      header: '',
+      headerText: 'Live',
+      filter: { type: 'boolean', accessor: (r) => r.open },
+    };
+    expect(filterChipLabel(col, true)).toBe('Live: true');
+  });
+
+  it('falls back to key when both header and headerText are empty / absent', () => {
+    const col: FilterableColumn<Row> = {
+      key: 'live',
+      header: '',
+      filter: { type: 'boolean', accessor: (r) => r.open },
+    };
+    expect(filterChipLabel(col, true)).toBe('live: true');
+  });
+
+  it('prefers a non-empty header over headerText', () => {
+    const col: FilterableColumn<Row> = {
+      key: 'live',
+      header: 'Alive',
+      headerText: 'Live',
+      filter: { type: 'boolean', accessor: (r) => r.open },
+    };
+    expect(filterChipLabel(col, true)).toBe('Alive: true');
+  });
+});

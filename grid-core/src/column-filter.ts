@@ -93,6 +93,14 @@ export type ColumnFilterState = Record<string, ColumnFilterValue>;
 export interface FilterableColumn<TRow> {
   key: string;
   header: unknown;
+  /**
+   * Optional plain-text column name. Used as the label fallback when `header`
+   * is an empty string or non-textual (e.g. an icon-only column whose
+   * `header` is ''). `ColumnDef` already carries `headerText`, so it flows
+   * through automatically — icon-only columns still get a readable filter
+   * option / chip / editor label.
+   */
+  headerText?: unknown;
   filter?: ColumnFilterSpec<TRow>;
 }
 
@@ -420,8 +428,9 @@ function enumLabelFor(spec: EnumFilterSpec<unknown>, value: string): string {
 
 /** The column's short display name for a chip prefix. */
 function columnLabel(col: FilterableColumn<unknown>): string {
-  if (typeof col.header === 'string') return col.header;
+  if (typeof col.header === 'string' && col.header.length > 0) return col.header;
   if (typeof col.header === 'number') return String(col.header);
+  if (typeof col.headerText === 'string' && col.headerText.length > 0) return col.headerText;
   return col.key;
 }
 
