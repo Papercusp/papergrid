@@ -9,10 +9,11 @@
  *
  * @module @papercusp/grid/GridTable
  */
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
 import { useHoverExpand } from './use-hover-expand';
 import {
   GRID_COLORS,
+  getGridThemeVersion,
   TD_BASE,
   TH_BASE,
   TABLE_WRAPPER_STYLE,
@@ -27,6 +28,7 @@ import {
   badgeStyle,
   rowBg,
   stepperCSS,
+  subscribeGridTheme,
 } from './grid-theme';
 import {
   normalizeColumns,
@@ -358,6 +360,8 @@ export default function GridTable({
   header,
   footer,
 }: GridTableProps) {
+  useSyncExternalStore(subscribeGridTheme, getGridThemeVersion, getGridThemeVersion);
+
   // Normalize columns
   const columns: GridTableColumn[] = useMemo(() => {
     const raw = normalizeColumns(config.headers);

@@ -4,7 +4,8 @@
 
 // Theme — brand-neutral by default; hosts inject colours via configureGridColors.
 export {
-  GRID_COLORS, glideTheme, configureGridColors,
+  GRID_COLORS, GRID_THEME_CHANGE_EVENT, glideTheme, configureGridColors,
+  getGridThemeVersion, subscribeGridTheme,
   EDIT_INPUT_STYLE, STEPPER_BTN_STYLE, STEPPER_PILL_STYLE, STEPPER_GLOBAL_CSS,
   TD_BASE, TH_BASE, TABLE_WRAPPER_STYLE, TABLE_STYLE, GRID_PANEL_STYLE,
   CHECKBOX_STYLE, STEPPER_INPUT_STYLE,

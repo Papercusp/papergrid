@@ -124,6 +124,20 @@ describe('configureGridColors — in-place palette mutation', () => {
     expect(GRID_COLORS.headerBg).toBe(prevHeaderBg);
     expect(GRID_COLORS.text).toBe(prevText);
   });
+
+  it('increments the theme version and notifies subscribers', () => {
+    const before = mod.getGridThemeVersion();
+    let calls = 0;
+    const unsubscribe = mod.subscribeGridTheme(() => {
+      calls += 1;
+    });
+
+    configureGridColors({ bg: '#001122' });
+    unsubscribe();
+
+    expect(mod.getGridThemeVersion()).toBe(before + 1);
+    expect(calls).toBe(1);
+  });
 });
 
 describe('configureGridColors — derived live-binding tracking', () => {
@@ -174,6 +188,7 @@ describe('configureGridColors — derived live-binding tracking', () => {
     expect(mod.glideTheme.linkColor).toBe('#aa0009');
 
     // EDIT_INPUT_STYLE — text + editBorder.
+    expect(mod.EDIT_INPUT_STYLE.background).toBe(GRID_COLORS.editBg);
     expect(mod.EDIT_INPUT_STYLE.color).toBe('#aa0006');
     expect(mod.EDIT_INPUT_STYLE.border).toBe('1px solid #aa000855');
 

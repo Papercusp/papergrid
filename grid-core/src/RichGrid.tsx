@@ -37,13 +37,14 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type HTMLAttributes,
   type MutableRefObject,
   type ReactNode,
 } from 'react';
 import type { Virtualizer } from '@tanstack/virtual-core';
-import { GRID_COLORS } from './grid-theme';
+import { GRID_COLORS, getGridThemeVersion, subscribeGridTheme } from './grid-theme';
 import { buildCopyPayloads, headerTextFor, cellTextFor } from './copy-payloads';
 import type { ColumnFilterSpec } from './column-filter';
 
@@ -658,6 +659,8 @@ const BodyRow = memo(BodyRowImpl) as typeof BodyRowImpl;
 // ─── Main component ─────────────────────────────────────────────────────────
 
 export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
+  useSyncExternalStore(subscribeGridTheme, getGridThemeVersion, getGridThemeVersion);
+
   const {
     columns,
     getRowId,
