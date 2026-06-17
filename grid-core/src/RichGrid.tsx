@@ -125,6 +125,18 @@ export interface VirtualMode<TRow> {
   totalRows: number;
   /** Lookup row by index. Return `undefined` for not-yet-loaded indexes. */
   rowAt: (index: number) => TRow | undefined;
+  /**
+   * Measure EVERY rendered virtual row, not just the expanded one. By default
+   * RichGrid only calls `measureElement` for the expanded row (see
+   * `expandedRowKey`/`expandedRowKeys`) and trusts the virtualizer's
+   * `estimateSize` for all others — each measurement is a forced layout read in
+   * the scroll path, so for uniform-height rows it's pure cost. Opt in when rows
+   * are *genuinely* variable height (multi-line summary cards, day-grouped
+   * feeds, wrap-on-tags rails): the virtualizer then measures each visible
+   * row's real height and keeps offsets exact. Scope is the visible window plus
+   * overscan, so the cost is bounded to a few dozen rows per frame.
+   */
+  measureAll?: boolean;
 }
 
 export interface RichGridProps<TRow> {
@@ -721,26 +733,35 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
   // Uncontrolled selection fallback.
   const [uncontrolled, setUncontrolled] = useState<ReadonlySet<string>>(() => new Set());
   const selectedRowIds = controlledSelected ?? uncontrolled;
-  const setSelectedRowIds = useCallback(
-    (next: ReadonlySet<string>) => {
-      if (controlledSelected !== undefined) {
-        onSelectedRowIdsChange?.(next);
-      } else {
-        setUncontrolled(next);
-        onSelectedRowIdsChange?.(next);
-      }
-    },
-    [controlledSelected, onSelectedRowIdsChange],
-  );
+  // Latest-value refs so the selection callbacks below can stay IDENTITY-STABLE
+  // across renders. `selectedRowIds` (and the controlled props) are typically a
+  // fresh Set each render; if `setSelectedRowIds` / `handleRowSelect` closed over
+  // them directly they'd change identity every render and — being passed to every
+  // BodyRow — would defeat memo(BodyRow) on every selection toggle, re-rendering
+  // the whole visible window instead of just the rows whose selection flipped.
+  const selectedRowIdsRef = useRef(selectedRowIds);
+  selectedRowIdsRef.current = selectedRowIds;
+  const controlledSelectedRef = useRef(controlledSelected);
+  controlledSelectedRef.current = controlledSelected;
+  const onSelectedRowIdsChangeRef = useRef(onSelectedRowIdsChange);
+  onSelectedRowIdsChangeRef.current = onSelectedRowIdsChange;
+  const setSelectedRowIds = useCallback((next: ReadonlySet<string>) => {
+    if (controlledSelectedRef.current !== undefined) {
+      onSelectedRowIdsChangeRef.current?.(next);
+    } else {
+      setUncontrolled(next);
+      onSelectedRowIdsChangeRef.current?.(next);
+    }
+  }, []);
 
   const handleRowSelect = useCallback(
     (rowId: string, checked: boolean) => {
-      const next = new Set(selectedRowIds);
+      const next = new Set(selectedRowIdsRef.current);
       if (checked) next.add(rowId);
       else next.delete(rowId);
       setSelectedRowIds(next);
     },
-    [selectedRowIds, setSelectedRowIds],
+    [setSelectedRowIds],
   );
 
   // Per-column px width overrides set by dragging the header resize handles.
@@ -900,17 +921,19 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
             );
           }
           const rowId = getRowId(row);
-          // Only the row currently expanded has variable height (its
-          // expanded panel can grow). Other rows are fixed at
-          // rowMinHeight, so skip measureElement for them — every
-          // measurement is a forced layout read in the scroll path.
+          // By default only the row currently expanded has variable height (its
+          // expanded panel can grow). Other rows are fixed at rowMinHeight, so
+          // skip measureElement for them — every measurement is a forced layout
+          // read in the scroll path. When the caller opts into `measureAll`
+          // (genuinely variable-height rows), measure every visible row instead.
           const isExpandedRow = expandedRowKey === rowId || (expandedRowKeys?.has(rowId) ?? false);
+          const measureThisRow = isExpandedRow || virtualMode!.measureAll === true;
           return (
             <div
               key={vi.key}
               data-index={vi.index}
               ref={
-                isExpandedRow
+                measureThisRow
                   ? (el) => {
                       if (el) virtualMode!.virtualizer.measureElement(el);
                     }

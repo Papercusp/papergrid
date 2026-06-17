@@ -126,3 +126,50 @@ describe('RichGrid resizable columns (controlled)', () => {
     expect(container.innerHTML).toContain('150px');
   });
 });
+
+describe('RichGrid (memo — only the changed rows re-render)', () => {
+  // The operator-vite U1 conversion relies on memo(BodyRow): when one row's
+  // selection toggles (a `?chat=` / `?fmsg=` change), every OTHER row must skip
+  // its render. That only holds when the per-row props handed to BodyRow keep a
+  // stable identity across the parent re-render — which is exactly why the
+  // consumer hoists `getRowBg` / `rowProps` to stable references. This pins the
+  // contract: with stable column/getRowBg refs, flipping one row's selection
+  // re-invokes only that row's `render`, not its neighbour's.
+  it('re-renders only the row whose selection changed', () => {
+    const renderCounts: Record<string, number> = { '1': 0, '2': 0 };
+    const memoColumns: ColumnDef<Row>[] = [
+      {
+        key: 'name',
+        header: 'Name',
+        width: 1,
+        render: (ctx) => {
+          renderCounts[ctx.row.id] = (renderCounts[ctx.row.id] ?? 0) + 1;
+          return ctx.row.name;
+        },
+      },
+    ];
+    const stableRows: Row[] = [
+      { id: '1', name: 'Alice', age: 30 },
+      { id: '2', name: 'Bob', age: 25 },
+    ];
+    const stableBg = () => 'transparent';
+    const Harness = ({ sel }: { sel: string | null }) => (
+      <RichGrid
+        columns={memoColumns}
+        rows={stableRows}
+        getRowId={(r) => r.id}
+        selectedRowIds={new Set(sel ? [sel] : [])}
+        getRowBg={stableBg}
+      />
+    );
+    const { rerender } = render(<Harness sel={null} />);
+    expect(renderCounts).toEqual({ '1': 1, '2': 1 });
+
+    // Select row 1 → only row 1's isSelected changes; row 2's props are identical
+    // (same row object, same bg string, same columns/extraRowProps refs), so
+    // memo(BodyRow) skips it.
+    rerender(<Harness sel="1" />);
+    expect(renderCounts['1']).toBe(2);
+    expect(renderCounts['2']).toBe(1);
+  });
+});
