@@ -27,7 +27,7 @@ vi.mock('@tanstack/react-virtual', () => ({
 
 interface Row { id: string; label: string }
 const columns: ColumnDef<Row>[] = [
-  { key: 'label', header: 'Label', width: 1, render: ({ row }) => row.label },
+  { key: 'label', header: 'Label', width: 1, toCopyText: (r) => r.label, render: ({ row }) => row.label },
 ];
 const rows: Row[] = [
   { id: 'a', label: 'Alpha' },
@@ -51,6 +51,24 @@ describe('VirtualGrid', () => {
     fireEvent.click(screen.getByText('Beta'));
     expect(onRowClick).toHaveBeenCalledTimes(1);
     expect((onRowClick.mock.calls[0][0] as Row).id).toBe('b');
+  });
+
+  it('Ctrl+C copies the FULL row set as TSV + HTML (not just the visible window)', () => {
+    const { container } = render(<VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={rows} />);
+    const scroller = container.firstElementChild as HTMLElement;
+    expect(scroller.getAttribute('tabindex')).toBe('0'); // focusable for the copy handler
+    const setData = vi.fn();
+    fireEvent.copy(scroller, { clipboardData: { setData } });
+    expect(setData).toHaveBeenCalledWith('text/plain', expect.stringContaining('Gamma')); // 3rd row → full set, not a viewport
+    expect(setData).toHaveBeenCalledWith('text/html', expect.stringContaining('Alpha'));
+  });
+
+  it('disableCopySupport drops the copy handler + tabindex', () => {
+    const { container } = render(
+      <VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={rows} disableCopySupport />,
+    );
+    const scroller = container.firstElementChild as HTMLElement;
+    expect(scroller.getAttribute('tabindex')).toBeNull();
   });
 
   it('owns a scrolling container by default (overflow auto)', () => {
