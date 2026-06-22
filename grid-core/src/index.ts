@@ -40,6 +40,12 @@ export type {
   VirtualMode as RichGridVirtualMode,
 } from './RichGrid';
 
+// VirtualGrid — RichGrid + an owned TanStack virtualizer + scroll container.
+// The drop-in for an in-memory row array that should NOT mount every row as DOM
+// (so a fetch cap is no longer how render stays cheap). See VirtualGrid.tsx.
+export { default as VirtualGrid } from './VirtualGrid';
+export type { VirtualGridProps } from './VirtualGrid';
+
 // Hover-expand state machine
 export { useHoverExpand } from './use-hover-expand';
 

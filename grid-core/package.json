@@ -20,7 +20,8 @@
     "react-dom": "^18 || ^19"
   },
   "dependencies": {
-    "@glideapps/glide-data-grid": "^6.0.3"
+    "@glideapps/glide-data-grid": "^6.0.3",
+    "@tanstack/react-virtual": "^3.13.23"
   },
   "scripts": {
     "test": "vitest run --passWithNoTests",
