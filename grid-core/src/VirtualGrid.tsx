@@ -56,6 +56,16 @@ export interface VirtualGridProps<TRow>
   scrollClassName?: string;
   /** Extra style merged onto the scroll container. */
   scrollStyle?: CSSProperties;
+  /**
+   * Infinite scroll: fired once when the user scrolls within
+   * `endReachedThreshold` px of the bottom. Wire it to grow the fetch window
+   * (bump the sync-query `limit`) so `rows` extends on demand — the row count
+   * never needs a visible cap. Undefined ⇒ no infinite scroll (default). Re-arms
+   * once the user scrolls back up, so it fires again for each new page.
+   */
+  onEndReached?: () => void;
+  /** Distance from the bottom (px) that triggers `onEndReached`. Default 1500. */
+  endReachedThreshold?: number;
 }
 
 const DEFAULT_SCROLL_STYLE: CSSProperties = { flex: 1, minHeight: 0, overflow: 'auto' };
@@ -69,6 +79,8 @@ export default function VirtualGrid<TRow>({
   measureVariableHeight,
   scrollClassName,
   scrollStyle,
+  onEndReached,
+  endReachedThreshold = 1500,
   rowMinHeight,
   disableCopySupport = false,
   ...richGridProps
@@ -86,6 +98,30 @@ export default function VirtualGrid<TRow>({
   useEffect(() => {
     virtualizer.measure();
   }, [rows, virtualizer]);
+
+  // Infinite scroll: fire `onEndReached` once per approach to the bottom edge.
+  // `fired` latches so a single near-bottom dwell doesn't spam the callback;
+  // scrolling back out past the threshold re-arms it for the next page. Mirrors
+  // RichGrid's legacy scroll-edge effect (which is inert in virtualMode), but on
+  // VirtualGrid's own scroll element.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !onEndReached) return;
+    let fired = false;
+    const onScroll = () => {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      if (distanceFromBottom < endReachedThreshold) {
+        if (!fired) {
+          fired = true;
+          onEndReached();
+        }
+      } else {
+        fired = false;
+      }
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [onEndReached, endReachedThreshold]);
 
   // Ctrl+C → TSV + HTML clipboard payload over the FULL row set (RichGrid's own
   // copy handler is on its non-inline wrapper, which we don't render). Built at
