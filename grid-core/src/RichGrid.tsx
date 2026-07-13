@@ -216,7 +216,13 @@ export interface RichGridProps<TRow> {
    * `onMouseEnter`, `onMouseLeave` are merged BEFORE this — return them here
    * to override (rare).
    */
-  rowProps?: (ctx: CellRenderContext<TRow>) => HTMLAttributes<HTMLDivElement>;
+  /** Extra props for the row element. `data-*` attributes are explicitly allowed:
+   *  they are valid on any DOM node and are how consumers hang test hooks off a
+   *  row, but React's `HTMLAttributes` does not model them, so a bare
+   *  `HTMLAttributes` return type rejected `{ 'data-testid': … }`. */
+  rowProps?: (
+    ctx: CellRenderContext<TRow>,
+  ) => HTMLAttributes<HTMLDivElement> & Record<`data-${string}`, string | number | boolean | undefined>;
 
   /** Extra style merged onto the sticky header row. */
   headerStyle?: CSSProperties;
