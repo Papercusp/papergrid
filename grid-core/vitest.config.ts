@@ -1,4 +1,4 @@
-import { defineVitestConfig } from '@papercusp/test-config';
+import { defineVitestConfig } from '@papercusp/test-config/vitest-config';
 import { mergeConfig } from 'vitest/config';
 
 // Base shared config + two additions needed for jsdom component tests run from
