@@ -16,6 +16,7 @@
     }
   },
   "peerDependencies": {
+    "@papercusp/test-config": "*",
     "react": "^18 || ^19",
     "react-dom": "^18 || ^19"
   },
@@ -32,7 +33,6 @@
     "lostpixel:update": "LOST_PIXEL_GENERATE_ONLY=1 lost-pixel"
   },
   "devDependencies": {
-    "@papercusp/test-config": "*",
     "@storybook/addon-docs": "^10.3.6",
     "@storybook/react-vite": "^10.3.6",
     "@tanstack/virtual-core": "^3.13.9",

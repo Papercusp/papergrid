@@ -23,6 +23,8 @@
     }
   },
   "peerDependencies": {
+    "@papercusp/kv-persist": "*",
+    "@papercusp/test-config": "*",
     "@tanstack/react-query": "^5.0.0",
     "react": "^18 || ^19"
   },
@@ -35,12 +37,10 @@
     }
   },
   "dependencies": {
-    "bloom-filters": "^3.0.4",
-    "@papercusp/kv-persist": "*"
+    "bloom-filters": "^3.0.4"
   },
   "devDependencies": {
-    "vitest": "^4.1.5",
-    "@papercusp/test-config": "*"
+    "vitest": "^4.1.5"
   },
   "scripts": {
     "test": "vitest run"
