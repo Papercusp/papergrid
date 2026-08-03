@@ -51,7 +51,12 @@ const COLUMNS: ColumnDef<Row>[] = [
   },
 ];
 
-const meta: Meta<typeof RichGrid> = {
+// RichGrid is generic (`RichGrid<TRow>`), and Storybook's `Meta`/`StoryObj`
+// cannot infer TRow from `component:` alone — it falls back to `unknown`, which
+// makes every `ColumnDef<Row>[]` arg and every `getRowId: (r) => r.id` a type
+// error. Instantiating the type query (TS 4.7 instantiation expressions) pins
+// TRow = Row for the whole file, which is what these stories actually render.
+const meta: Meta<typeof RichGrid<Row>> = {
   component: RichGrid,
   parameters: { layout: 'fullscreen' },
   decorators: [
@@ -64,7 +69,7 @@ const meta: Meta<typeof RichGrid> = {
 };
 export default meta;
 
-type Story = StoryObj<typeof RichGrid>;
+type Story = StoryObj<typeof RichGrid<Row>>;
 
 export const Default: Story = {
   args: {
