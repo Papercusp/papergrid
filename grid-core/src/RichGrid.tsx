@@ -118,6 +118,21 @@ export interface VirtualMode<TRow> {
   rowAt: (index: number) => TRow | undefined;
 }
 
+/**
+ * Attributes a consumer may spread onto a row root.
+ *
+ * `HTMLAttributes` plus an explicit `data-*` index signature. React permits
+ * `data-*` on a JSX element but does not declare it on `HTMLAttributes`, so
+ * without this a callback returning only `{ 'data-testid': … }` is rejected
+ * ("no properties in common") — while the same object returned alongside any
+ * real attribute is accepted. That inconsistency is a trap, not a rule: the
+ * index signature also disables the weak-type check for this type, so a
+ * data-only return is accepted the same way a mixed one already was.
+ */
+export type RowAttributes =
+  & HTMLAttributes<HTMLDivElement>
+  & { [dataAttribute: `data-${string}`]: string | number | boolean | undefined };
+
 export interface RichGridProps<TRow> {
   /** Column definitions in display order. */
   columns: ColumnDef<TRow>[];
@@ -185,8 +200,14 @@ export interface RichGridProps<TRow> {
    * keyboard accessibility, focus-driven UI, etc. The default `onClick`,
    * `onMouseEnter`, `onMouseLeave` are merged BEFORE this — return them here
    * to override (rare).
+   *
+   * The return type is `RowAttributes`, not a bare `HTMLAttributes`, because
+   * React does not model `data-*` on that interface: a callback returning ONLY
+   * a data attribute (the common case — a test id) has no property in common
+   * with `HTMLAttributes` and is rejected by TypeScript's weak-type check,
+   * contradicting the `data-*` this comment promises.
    */
-  rowProps?: (ctx: CellRenderContext<TRow>) => HTMLAttributes<HTMLDivElement>;
+  rowProps?: (ctx: CellRenderContext<TRow>) => RowAttributes;
 
   /** Extra style merged onto the sticky header row. */
   headerStyle?: CSSProperties;
@@ -553,6 +574,10 @@ function BodyRowImpl<TRow>({
         // hover bg-color change on row N doesn't trigger reflow of N±1.
         contain: 'layout paint',
         ...extraStyle,
+        // Let explicit track minima widen the row itself. If only the inner
+        // grid overflows, controls can paint beyond the row's real hit box and
+        // the scroll container never gains an honest horizontal scroll range.
+        minWidth: 'min-content',
       }}
     >
       <div
@@ -747,6 +772,9 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
         zIndex: 2,
         minHeight: headerHeight,
         ...headerStyle,
+        // Keep header geometry in lockstep with body rows when a consumer uses
+        // fixed or minmax() tracks wider than the viewport.
+        minWidth: 'min-content',
       }}
     >
       {selectable && (

@@ -33,6 +33,7 @@ export type { GridTableProps } from './GridTable';
 export { default as RichGrid } from './RichGrid';
 export type {
   RichGridProps,
+  RowAttributes as RichGridRowAttributes,
   ColumnDef,
   CellRenderContext,
   ColumnAlign,
