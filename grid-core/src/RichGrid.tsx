@@ -330,6 +330,41 @@ const PRINT_MIRROR_CSS = `
 }
 `;
 
+/**
+ * Visible keyboard focus for the grid root (WI-39292).
+ *
+ * The root carries tabIndex={0} so Ctrl+A / copy work, and its inline style
+ * sets `outline: 'none'` — so it was focusable and completely invisible: a
+ * keyboard user tabbing the page landed on the grid with no indication.
+ *
+ * This is injected SEPARATELY from the print-mirror sheet, and
+ * UNCONDITIONALLY, because that one is only injected when printMirrorEnabled
+ * is true — folding the focus rule in there would have shipped a focus ring
+ * that appears on some grids and not others, which is worse than none because
+ * it looks fixed.
+ *
+ * `currentColor` rather than a palette constant: this string is injected once
+ * and cannot re-read GRID_COLORS when the host switches theme at runtime,
+ * whereas currentColor tracks the grid's own text colour in both themes.
+ */
+const A11Y_STYLE_ID = '__rg_a11y_css';
+/** Exported so a test can assert the focus ring exists without a real DOM. */
+export const A11Y_CSS = `
+[data-rg-screen-grid]:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+`;
+
+function ensureA11yStyleInjected(): void {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(A11Y_STYLE_ID)) return;
+  const el = document.createElement('style');
+  el.id = A11Y_STYLE_ID;
+  el.textContent = A11Y_CSS;
+  document.head.appendChild(el);
+}
+
 function ensurePrintMirrorStyleInjected(): void {
   if (typeof document === 'undefined') return;
   if (document.getElementById(PRINT_MIRROR_STYLE_ID)) return;
@@ -471,17 +506,24 @@ function HeaderCell<TRow>({ col, sortState, onSortChange, resizable, onResize }:
 
   if (!sortable) {
     return (
-      <div ref={setCellRef} className={col.headerClassName} style={cellStyle}>
+      <div ref={setCellRef} role="columnheader" className={col.headerClassName} style={cellStyle}>
         {col.header}
         {handle}
       </div>
     );
   }
 
+  // A sortable header stays a real <button> so click/Enter/Space keep working,
+  // but carries role="columnheader" because inside role="grid" the CELL is what
+  // the row must contain — a bare button there is not a valid grid child. The
+  // sort affordance is conveyed by aria-sort instead of the button role, which
+  // is the usual trade for this pattern (WI-39292).
   return (
     <button
       ref={setCellRef}
       type="button"
+      role="columnheader"
+      aria-sort={active ? (sortState!.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
       className={col.headerClassName}
       onClick={() => {
         if (!onSortChange) return;
@@ -837,14 +879,17 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
   let body: ReactNode;
   if (isEmpty) {
     body = (
-      <div style={{ padding: 24, color: GRID_COLORS.muted, textAlign: 'center', fontSize: 13 }}>
+      /* role="presentation": an empty-state message is not a row, and a grid
+         may only contain rows/rowgroups — without this the placeholder would
+         be an invalid grid child (WI-39292). */
+      <div role="presentation" style={{ padding: 24, color: GRID_COLORS.muted, textAlign: 'center', fontSize: 13 }}>
         {empty ?? 'No data'}
       </div>
     );
   } else if (isVirtual) {
     const items = virtualMode!.virtualizer.getVirtualItems();
     body = (
-      <div style={{ position: 'relative', height: virtualMode!.virtualizer.getTotalSize() }}>
+      <div role="presentation" style={{ position: 'relative', height: virtualMode!.virtualizer.getTotalSize() }}>
         {items.map((vi) => {
           const row = virtualMode!.rowAt(vi.index);
           if (!row) {
@@ -1003,6 +1048,12 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
   useEffect(() => {
     if (printMirrorEnabled) ensurePrintMirrorStyleInjected();
   }, [printMirrorEnabled]);
+
+  // The focus ring is UNCONDITIONAL — every grid root is focusable, so every
+  // grid needs it, regardless of whether this instance prints (WI-39292).
+  useEffect(() => {
+    ensureA11yStyleInjected();
+  }, []);
 
   // Copy handler — wired as a `copy` listener on the root container. Builds
   // both TSV and HTML payloads. Selection priority:
