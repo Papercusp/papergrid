@@ -580,7 +580,15 @@ function BodyRowImpl<TRow>({
         minWidth: 'min-content',
       }}
     >
+      {/*
+        role="presentation": this wrapper exists only to lay the cells out on a
+        CSS grid. Without it the row's cells are not the row's CHILDREN in the
+        accessibility tree, so adding role="grid" above would still produce
+        rows that contain no cells — a tree that lints as fixed and reads as
+        broken (WI-39292).
+      */}
       <div
+        role="presentation"
         style={{
           display: 'grid',
           gridTemplateColumns,
@@ -597,12 +605,22 @@ function BodyRowImpl<TRow>({
               padding: '0 6px',
             }}
           >
+            {/*
+              The accessible name must DISTINGUISH the row. A constant
+              "Select row" gave every checkbox in the grid the identical name
+              (50 of them on the Inventory screen), so a screen-reader user
+              tabbing the column heard the same three words repeatedly with no
+              way to tell which item they were selecting (WI-39292). The
+              1-based row number is the smallest thing that is always
+              available and always unique; a consumer wanting a meaningful
+              name (the product title) can render its own control in a column.
+            */}
             <input
               type="checkbox"
               checked={isSelected}
               onChange={(e) => onSelectChange?.(rowId, e.target.checked)}
               onClick={(e) => e.stopPropagation()}
-              aria-label="Select row"
+              aria-label={`Select row ${rowIndex + 1}`}
             />
           </div>
         )}
@@ -614,6 +632,7 @@ function BodyRowImpl<TRow>({
           return (
             <div
               key={col.key}
+              role="gridcell"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1091,7 +1110,18 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
       }}
     >
       {topSlot}
+      {/*
+        role="grid" belongs HERE, not on the root: this element contains
+        exactly {header} + {body} and nothing else, while the root also wraps
+        {topSlot}/{footerSlot}, which are arbitrary consumer content — and a
+        grid may contain only rows and rowgroups. Before this, 51 role="row"
+        elements rendered with no grid/table/treegrid ancestor at all, so a
+        screen reader saw rows belonging to nothing (WI-39292).
+      */}
       <div
+        role="grid"
+        aria-rowcount={totalRows > 0 ? totalRows + 1 : undefined}
+        aria-colcount={columns.length + (selectable ? 1 : 0)}
         ref={(el) => {
           scrollRef.current = el;
           if (scrollContainerRef) scrollContainerRef.current = el;
