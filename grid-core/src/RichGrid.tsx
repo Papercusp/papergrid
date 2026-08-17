@@ -350,6 +350,9 @@ const PRINT_MIRROR_CSS = `
 const A11Y_STYLE_ID = '__rg_a11y_css';
 /** Exported so a test can assert the focus ring exists without a real DOM. */
 export const A11Y_CSS = `
+[data-rg-screen-grid]:focus {
+  outline: none;
+}
 [data-rg-screen-grid]:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: -2px;
@@ -1156,7 +1159,14 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
         background: GRID_COLORS.bg,
         color: GRID_COLORS.text,
         fontFamily: GRID_COLORS.font,
-        outline: 'none',
+        // NOTE: `outline: 'none'` used to live HERE, and it silently defeated
+        // the focus ring — an inline style beats any stylesheet rule short of
+        // !important, so the injected :focus-visible rule matched and computed
+        // to `outline-style: none` anyway. Measured in the live DOM:
+        // { active: true, matchesFocusVisible: true, outlineStyle: "none" }.
+        // Suppressing the mouse-focus ring is now A11Y_CSS's `:focus` rule, so
+        // the two live in one place and the keyboard ring can actually win
+        // (WI-39292).
         ...style,
       }}
     >

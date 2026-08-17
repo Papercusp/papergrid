@@ -122,11 +122,29 @@ describe('RichGrid accessibility (WI-39292)', () => {
   });
 
   it('ships a focus-visible rule for the focusable root, unconditionally', () => {
-    // The root sets outline:none inline, so the ring can only come from the
-    // injected sheet. It is injected separately from the print-mirror sheet
-    // BECAUSE that one only injects when printMirrorEnabled — folding them
-    // together would give some grids a focus ring and others none.
+    // Injected separately from the print-mirror sheet BECAUSE that one only
+    // injects when printMirrorEnabled — folding them together would give some
+    // grids a focus ring and others none.
     expect(A11Y_CSS).toContain('[data-rg-screen-grid]:focus-visible');
     expect(A11Y_CSS).toMatch(/outline:\s*2px solid/);
+    // The mouse-focus suppression must live in the SHEET too, so it and the
+    // keyboard ring are resolved by the same cascade.
+    expect(A11Y_CSS).toMatch(/\[data-rg-screen-grid\]:focus\s*\{[^}]*outline:\s*none/);
+  });
+
+  it('does NOT suppress the outline inline, which would defeat the ring', () => {
+    // THE REGRESSION THIS EXISTS FOR: the root used to carry
+    // `outline: 'none'` in its inline style object. An inline style beats any
+    // stylesheet rule short of !important, so the :focus-visible rule matched
+    // and still computed to outline-style:none — the ring was present in the
+    // CSS and invisible on screen. Measured live before the fix:
+    //   { active: true, matchesFocusVisible: true, outlineStyle: "none" }
+    // Asserting the rule EXISTS (above) passed the whole time; only this
+    // assertion would have caught it.
+    const markup = render();
+    const rootTag = markup.slice(0, markup.indexOf('>') + 1);
+
+    expect(rootTag).toContain('data-rg-screen-grid');
+    expect(rootTag).not.toMatch(/outline:\s*none/);
   });
 });
