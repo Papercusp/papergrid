@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "devDependencies": {
     "@papercusp/test-config": "*",

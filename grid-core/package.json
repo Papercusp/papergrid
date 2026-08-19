@@ -23,7 +23,7 @@
     "@glideapps/glide-data-grid": "^6.0.3"
   },
   "scripts": {
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "bench": "vitest bench --run"
   },
   "devDependencies": {
