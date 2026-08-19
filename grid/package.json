@@ -24,7 +24,8 @@
     "@papercusp/grid-core": "*"
   },
   "scripts": {
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
     "@papercusp/test-config": "*",

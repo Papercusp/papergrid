@@ -43,6 +43,7 @@
     "@papercusp/test-config": "*"
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   }
 }
