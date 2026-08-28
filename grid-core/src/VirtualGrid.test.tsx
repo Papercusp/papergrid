@@ -6,10 +6,16 @@
  * assert VirtualGrid drives the REAL RichGrid through `virtualMode`: every row
  * renders, props forward, and the scroll container is owned/styleable.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import VirtualGrid from './VirtualGrid';
 import type { ColumnDef } from './RichGrid';
+
+// `scrollToIndex` is hoisted out of the factory so a test can read what the
+// component asked the virtualizer to do. It has to be ONE stable fn across
+// renders: the stub rebuilds the virtualizer object every render, so a per-render
+// `vi.fn()` would drop the calls made by the render being asserted on.
+const scrollToIndex = vi.hoisted(() => vi.fn());
 
 // useVirtualizer stub: read `count` from the options and emit one VirtualItem per
 // index so RichGrid's virtualMode path renders every row.
@@ -22,6 +28,7 @@ vi.mock('@tanstack/react-virtual', () => ({
     getTotalSize: () => opts.count * 30,
     measureElement: vi.fn(),
     measure: vi.fn(),
+    scrollToIndex,
   }),
 }));
 
@@ -93,5 +100,99 @@ describe('VirtualGrid', () => {
       <VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={[]} empty={<div>Nothing here</div>} />,
     );
     expect(screen.getByText('Nothing here')).toBeTruthy();
+  });
+
+  // ── scrollToRowKey (WI-523949). Virtualization takes away every OTHER way to
+  // bring a row into view: a highlight on an unmounted row is invisible, and the
+  // row cannot scroll itself because it has no element. Only the virtualizer can
+  // move to an index that is not rendered, so this is the one place the "take me
+  // to that row" contract can live.
+  describe('scrollToRowKey', () => {
+    beforeEach(() => scrollToIndex.mockClear());
+
+    it('scrolls to the row with that id, and does nothing without one', () => {
+      // Control first: the same component, same instrument, no target. A test
+      // that only asserted the positive would pass against an effect that scrolls
+      // on every mount.
+      const { unmount } = render(
+        <VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={rows} />,
+      );
+      expect(scrollToIndex).not.toHaveBeenCalled();
+      unmount();
+
+      render(
+        <VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={rows} scrollToRowKey="c" />,
+      );
+      expect(scrollToIndex).toHaveBeenCalledTimes(1);
+      expect(scrollToIndex).toHaveBeenCalledWith(2, { align: 'center' });
+    });
+
+    it('scrolls ONCE per target, so the reader can scroll away and stay there', () => {
+      const { rerender } = render(
+        <VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={rows} scrollToRowKey="b" />,
+      );
+      expect(scrollToIndex).toHaveBeenCalledTimes(1);
+
+      // A re-render with the SAME target must not yank the viewport back. This is
+      // the case a naive implementation gets wrong: the stub hands back a fresh
+      // virtualizer object every render, so an effect keyed on it alone re-fires.
+      rerender(
+        <VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={rows} scrollToRowKey="b" />,
+      );
+      expect(scrollToIndex).toHaveBeenCalledTimes(1);
+
+      // A NEW target is a new intent and does scroll.
+      rerender(
+        <VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={rows} scrollToRowKey="a" />,
+      );
+      expect(scrollToIndex).toHaveBeenCalledTimes(2);
+      expect(scrollToIndex).toHaveBeenLastCalledWith(0, { align: 'center' });
+    });
+
+    it('waits for a target the rows do not hold yet instead of latching it away', () => {
+      // The deep-link case that a "fire once and mark it done" latch breaks: the
+      // target is routinely absent on first paint because the read has not landed.
+      // Missing must mean NOT YET, never NEVER — and never scrollToIndex(-1),
+      // which findIndex hands you and the virtualizer would accept.
+      const { rerender } = render(
+        <VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={[]} scrollToRowKey="c" />,
+      );
+      expect(scrollToIndex).not.toHaveBeenCalled();
+
+      rerender(
+        <VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={rows} scrollToRowKey="c" />,
+      );
+      expect(scrollToIndex).toHaveBeenCalledTimes(1);
+      expect(scrollToIndex).toHaveBeenCalledWith(2, { align: 'center' });
+    });
+
+    it('re-scrolls to the same row when it is cleared and re-selected', () => {
+      const { rerender } = render(
+        <VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={rows} scrollToRowKey="b" />,
+      );
+      expect(scrollToIndex).toHaveBeenCalledTimes(1);
+
+      // Dismiss, then pick the same row again — a real sequence (click to dismiss
+      // a selection, then follow a chip back to it). Holding the latch across the
+      // clear would silently make the second landing a no-op.
+      rerender(<VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={rows} scrollToRowKey={null} />);
+      rerender(
+        <VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={rows} scrollToRowKey="b" />,
+      );
+      expect(scrollToIndex).toHaveBeenCalledTimes(2);
+    });
+
+    it('honours the requested alignment', () => {
+      render(
+        <VirtualGrid<Row>
+          columns={columns}
+          getRowId={(r) => r.id}
+          rows={rows}
+          scrollToRowKey="a"
+          scrollToRowAlign="start"
+        />,
+      );
+      expect(scrollToIndex).toHaveBeenCalledWith(0, { align: 'start' });
+    });
   });
 });

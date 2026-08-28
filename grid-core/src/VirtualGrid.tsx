@@ -66,6 +66,28 @@ export interface VirtualGridProps<TRow>
   onEndReached?: () => void;
   /** Distance from the bottom (px) that triggers `onEndReached`. Default 1500. */
   endReachedThreshold?: number;
+  /**
+   * Bring the row with this `getRowId` into view when the value CHANGES — the
+   * deep-link / "select it in this list" landing.
+   *
+   * Virtualization silently breaks the older ways of doing this. A caller that
+   * highlights the target row (`getRowBg`) or expands it (`expandedRowKey`) has
+   * done nothing observable when the row sits outside the mounted window, and a
+   * per-row `scrollIntoView` effect cannot help because the row is not mounted
+   * to run one. Only the virtualizer can move to an unmounted index, so the
+   * scroll has to be asked for HERE.
+   *
+   * Semantics that matter:
+   * - It fires on CHANGE, not on every render, so the reader can scroll away
+   *   from the target and stay there.
+   * - A key that is not (yet) in `rows` does NOT latch. The deep-link target is
+   *   routinely absent on first paint — the read has not resolved, or a filter
+   *   still excludes it — so the scroll is re-attempted when `rows` changes and
+   *   lands when the row actually arrives.
+   */
+  scrollToRowKey?: string | null;
+  /** Where the scrolled-to row lands. Default 'center'. */
+  scrollToRowAlign?: 'start' | 'center' | 'end' | 'auto';
 }
 
 const DEFAULT_SCROLL_STYLE: CSSProperties = { flex: 1, minHeight: 0, overflow: 'auto' };
@@ -81,6 +103,8 @@ export default function VirtualGrid<TRow>({
   scrollStyle,
   onEndReached,
   endReachedThreshold = 1500,
+  scrollToRowKey = null,
+  scrollToRowAlign = 'center',
   rowMinHeight,
   disableCopySupport = false,
   ...richGridProps
@@ -98,6 +122,28 @@ export default function VirtualGrid<TRow>({
   useEffect(() => {
     virtualizer.measure();
   }, [rows, virtualizer]);
+
+  // Bring `scrollToRowKey` into view — see the prop doc for why this cannot be
+  // done by the row itself under virtualization.
+  //
+  // `lastScrolled` is the latch. It is set ONLY on a scroll we actually
+  // performed, which is what makes the two failure modes distinguishable: a key
+  // whose row is missing leaves the latch alone, so the next `rows` change
+  // re-attempts it, while a key whose row was found never scrolls twice and the
+  // reader keeps control of the viewport. Clearing the target clears the latch,
+  // so re-selecting the SAME row later scrolls to it again.
+  const lastScrolled = useRef<string | null>(null);
+  useEffect(() => {
+    if (scrollToRowKey == null) {
+      lastScrolled.current = null;
+      return;
+    }
+    if (scrollToRowKey === lastScrolled.current) return;
+    const index = rows.findIndex((row) => getRowId(row) === scrollToRowKey);
+    if (index < 0) return;
+    lastScrolled.current = scrollToRowKey;
+    virtualizer.scrollToIndex(index, { align: scrollToRowAlign });
+  }, [scrollToRowKey, scrollToRowAlign, rows, getRowId, virtualizer]);
 
   // Infinite scroll: fire `onEndReached` once per approach to the bottom edge.
   // `fired` latches so a single near-bottom dwell doesn't spam the callback;
