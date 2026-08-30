@@ -42,6 +42,32 @@ const rows: Row[] = [
   { id: 'c', label: 'Gamma' },
 ];
 
+function stubScrollGeometry(scrollHeight: number, clientHeight: number, initialScrollTop = 0) {
+  let scrollTop = initialScrollTop;
+  const keys = ['scrollHeight', 'clientHeight', 'scrollTop'] as const;
+  const originals = new Map<string, PropertyDescriptor | undefined>();
+  for (const key of keys) {
+    originals.set(key, Object.getOwnPropertyDescriptor(HTMLElement.prototype, key));
+    Object.defineProperty(HTMLElement.prototype, key, {
+      configurable: true,
+      get: () => (key === 'scrollHeight' ? scrollHeight : key === 'clientHeight' ? clientHeight : scrollTop),
+      set: key === 'scrollTop' ? (value: number) => { scrollTop = Number(value); } : undefined,
+    });
+  }
+  return {
+    setScrollTop(value: number) {
+      scrollTop = value;
+    },
+    restore() {
+      for (const key of keys) {
+        const original = originals.get(key);
+        if (original) Object.defineProperty(HTMLElement.prototype, key, original);
+        else delete (HTMLElement.prototype as unknown as Record<string, unknown>)[key];
+      }
+    },
+  };
+}
+
 afterEach(cleanup);
 
 describe('VirtualGrid', () => {
@@ -100,6 +126,96 @@ describe('VirtualGrid', () => {
       <VirtualGrid<Row> columns={columns} getRowId={(r) => r.id} rows={[]} empty={<div>Nothing here</div>} />,
     );
     expect(screen.getByText('Nothing here')).toBeTruthy();
+  });
+
+  describe('onEndReached', () => {
+    it('loads the next page on mount when the first page does not overflow', () => {
+      const geometry = stubScrollGeometry(120, 300);
+      try {
+        const onEndReached = vi.fn();
+        render(
+          <VirtualGrid<Row>
+            columns={columns}
+            getRowId={(r) => r.id}
+            rows={rows}
+            onEndReached={onEndReached}
+          />,
+        );
+        expect(onEndReached).toHaveBeenCalledTimes(1);
+      } finally {
+        geometry.restore();
+      }
+    });
+
+    it('fires once per bottom approach and rechecks after a new row page lands', () => {
+      const geometry = stubScrollGeometry(1_000, 300);
+      try {
+        const onEndReached = vi.fn();
+        const { container, rerender } = render(
+          <VirtualGrid<Row>
+            columns={columns}
+            getRowId={(r) => r.id}
+            rows={rows}
+            onEndReached={onEndReached}
+            endReachedThreshold={100}
+          />,
+        );
+        const scroller = container.firstElementChild as HTMLElement;
+        expect(onEndReached).not.toHaveBeenCalled();
+
+        geometry.setScrollTop(650);
+        fireEvent.scroll(scroller);
+        fireEvent.scroll(scroller);
+        expect(onEndReached).toHaveBeenCalledTimes(1);
+
+        geometry.setScrollTop(0);
+        fireEvent.scroll(scroller);
+        geometry.setScrollTop(650);
+        fireEvent.scroll(scroller);
+        expect(onEndReached).toHaveBeenCalledTimes(2);
+
+        rerender(
+          <VirtualGrid<Row>
+            columns={columns}
+            getRowId={(r) => r.id}
+            rows={[...rows, { id: 'd', label: 'Delta' }]}
+            onEndReached={onEndReached}
+            endReachedThreshold={100}
+          />,
+        );
+        expect(onEndReached).toHaveBeenCalledTimes(3);
+      } finally {
+        geometry.restore();
+      }
+    });
+
+    it('does not refire when only the callback identity changes for the same row page', () => {
+      const geometry = stubScrollGeometry(120, 300);
+      try {
+        const onEndReached = vi.fn();
+        const { rerender } = render(
+          <VirtualGrid<Row>
+            columns={columns}
+            getRowId={(r) => r.id}
+            rows={rows}
+            onEndReached={onEndReached}
+          />,
+        );
+        expect(onEndReached).toHaveBeenCalledTimes(1);
+
+        rerender(
+          <VirtualGrid<Row>
+            columns={columns}
+            getRowId={(r) => r.id}
+            rows={rows}
+            onEndReached={() => onEndReached()}
+          />,
+        );
+        expect(onEndReached).toHaveBeenCalledTimes(1);
+      } finally {
+        geometry.restore();
+      }
+    });
   });
 
   // ── scrollToRowKey (WI-523949). Virtualization takes away every OTHER way to
