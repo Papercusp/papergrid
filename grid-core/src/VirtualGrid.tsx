@@ -146,28 +146,46 @@ export default function VirtualGrid<TRow>({
   }, [scrollToRowKey, scrollToRowAlign, rows, getRowId, virtualizer]);
 
   // Infinite scroll: fire `onEndReached` once per approach to the bottom edge.
-  // `fired` latches so a single near-bottom dwell doesn't spam the callback;
-  // scrolling back out past the threshold re-arms it for the next page. Mirrors
-  // RichGrid's legacy scroll-edge effect (which is inert in virtualMode), but on
-  // VirtualGrid's own scroll element.
+  // The latch prevents a single near-bottom dwell from spamming the callback;
+  // scrolling back out past the threshold re-arms it for the next page. A short
+  // first page cannot emit a scroll event at all, so also check the geometry on
+  // mount and when a new row count lands. Keep the latch in refs so callback
+  // identity changes and parent re-renders cannot turn those checks into a fetch
+  // storm. Mirrors RichGrid's legacy scroll-edge effect (which is inert in
+  // virtualMode), but on VirtualGrid's own scroll element.
+  const endReachedFired = useRef(false);
+  const endReachedRowsLength = useRef<number | null>(null);
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || !onEndReached) return;
-    let fired = false;
-    const onScroll = () => {
+    if (!el || !onEndReached) {
+      // Dropping the callback means the caller reached the end of its corpus.
+      // Clear the latches so a later cursor can intentionally re-arm.
+      endReachedFired.current = false;
+      endReachedRowsLength.current = null;
+      return;
+    }
+    const checkEndReached = () => {
       const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
       if (distanceFromBottom < endReachedThreshold) {
-        if (!fired) {
-          fired = true;
+        if (
+          !endReachedFired.current ||
+          endReachedRowsLength.current !== rows.length
+        ) {
+          endReachedFired.current = true;
+          endReachedRowsLength.current = rows.length;
           onEndReached();
         }
       } else {
-        fired = false;
+        endReachedFired.current = false;
+        endReachedRowsLength.current = null;
       }
     };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
-  }, [onEndReached, endReachedThreshold]);
+    el.addEventListener('scroll', checkEndReached, { passive: true });
+    // Non-overflowing content never generates a scroll event, so evaluate the
+    // initial geometry and the geometry after a new page lands as well.
+    if (rows.length > 0) checkEndReached();
+    return () => el.removeEventListener('scroll', checkEndReached);
+  }, [onEndReached, endReachedThreshold, rows.length]);
 
   // Ctrl+C → TSV + HTML clipboard payload over the FULL row set (RichGrid's own
   // copy handler is on its non-inline wrapper, which we don't render). Built at
