@@ -4,6 +4,7 @@ build/
 *.tsbuildinfo
 .DS_Store
 coverage/
+coverage-*/
 
 # WI-4419 (2026-07-12): agent state dirs (.papercusp/) appear inside submodules too,
 # and git-sync auto-commits the superproject AND every submodule — so any scratch a
