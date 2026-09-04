@@ -55,6 +55,30 @@ const NEUTRAL: GridColors = {
 /** Live palette — mutated in place by `configureGridColors`. Read `.x` properties. */
 export const GRID_COLORS: GridColors = { ...NEUTRAL };
 
+export const GRID_THEME_CHANGE_EVENT = 'papercusp:grid-theme-changed';
+
+let gridThemeVersion = 0;
+const gridThemeListeners = new Set<() => void>();
+
+export function getGridThemeVersion(): number {
+  return gridThemeVersion;
+}
+
+export function subscribeGridTheme(listener: () => void): () => void {
+  gridThemeListeners.add(listener);
+  return () => {
+    gridThemeListeners.delete(listener);
+  };
+}
+
+function notifyGridThemeChange(): void {
+  gridThemeVersion += 1;
+  for (const listener of Array.from(gridThemeListeners)) listener();
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(GRID_THEME_CHANGE_EVENT));
+  }
+}
+
 // ─── Derived style builders ──────────────────────────────────────────────────
 
 const buildGlideTheme = (): Partial<Theme> => ({
@@ -80,7 +104,7 @@ const buildGlideTheme = (): Partial<Theme> => ({
 const buildEditInput = (): React.CSSProperties => ({
   width: '100%',
   height: '100%',
-  background: 'rgba(56,189,248,0.08)',
+  background: GRID_COLORS.editBg,
   border: `1px solid ${GRID_COLORS.editBorder}55`,
   borderRadius: 8,
   color: GRID_COLORS.text,
@@ -230,29 +254,9 @@ export let EXPAND_BTN_STYLE: React.CSSProperties = buildExpandBtn();
 /** Container for expanded sub-row content. */
 export let SUB_ROW_STYLE: React.CSSProperties = buildSubRow();
 
-// ─── Theme-change subscription (for live re-theming) ──────────────────────────
-// The canvas grid can't read CSS vars, so a host re-injects colours on theme
-// switch. These let React grid components re-render when that happens — see
-// `useGridTheme` (use-grid-theme.ts).
-
-let themeVersion = 0;
-const themeSubs = new Set<() => void>();
-
-/** Subscribe to `configureGridColors` calls. Returns an unsubscribe fn. */
-export function subscribeGridTheme(cb: () => void): () => void {
-  themeSubs.add(cb);
-  return () => themeSubs.delete(cb);
-}
-
-/** Monotonic counter bumped on every `configureGridColors` call. */
-export function getGridThemeVersion(): number {
-  return themeVersion;
-}
-
 /**
- * Inject host colours (e.g. from design tokens). Mutates the live palette,
- * rebuilds the derived style bindings, and notifies subscribers so live grids
- * re-render — every importer sees the change.
+ * Inject host colours (e.g. from design tokens). Mutates the live palette and
+ * rebuilds the derived style bindings — every importer sees the change.
  */
 export function configureGridColors(colors: Partial<GridColors>): void {
   Object.assign(GRID_COLORS, colors);
@@ -268,8 +272,7 @@ export function configureGridColors(colors: Partial<GridColors>): void {
   STEPPER_INPUT_STYLE = buildStepperInput();
   EXPAND_BTN_STYLE = buildExpandBtn();
   SUB_ROW_STYLE = buildSubRow();
-  themeVersion++;
-  themeSubs.forEach((cb) => cb());
+  notifyGridThemeChange();
 }
 
 // ─── Colour-independent constants ────────────────────────────────────────────

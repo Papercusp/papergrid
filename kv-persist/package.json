@@ -14,8 +14,10 @@
   "scripts": {
     "test": "vitest run --passWithNoTests"
   },
+  "peerDependencies": {
+    "@papercusp/test-config": "*"
+  },
   "devDependencies": {
-    "@papercusp/test-config": "*",
     "vitest": "^4.1.5"
   }
 }

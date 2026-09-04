@@ -37,15 +37,16 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type HTMLAttributes,
   type MutableRefObject,
   type ReactNode,
 } from 'react';
 import type { Virtualizer } from '@tanstack/virtual-core';
-import { GRID_COLORS } from './grid-theme';
-import { useGridTheme } from './use-grid-theme';
+import { GRID_COLORS, getGridThemeVersion, subscribeGridTheme } from './grid-theme';
 import { buildCopyPayloads, headerTextFor, cellTextFor } from './copy-payloads';
+import type { ColumnFilterSpec } from './column-filter';
 
 // ─── Public API types ───────────────────────────────────────────────────────
 
@@ -107,6 +108,14 @@ export interface ColumnDef<TRow> {
   cellStyle?: CSSProperties | ((ctx: CellRenderContext<TRow>) => CSSProperties);
   /** Class name added to this column's HEADER cell. Useful for hover effects. */
   headerClassName?: string;
+  /**
+   * Opts this column into generic per-column filtering — the symmetric sibling
+   * of `sortKey`. The consumer holds the `ColumnFilterState` (typically a nuqs
+   * URL param) and calls `applyColumnFilters(rows, state, columns)` before
+   * passing rows in; RichGrid renders no filter UI and applies no predicate
+   * itself. See `./column-filter`.
+   */
+  filter?: ColumnFilterSpec<TRow>;
 }
 
 export interface VirtualMode<TRow> {
@@ -116,6 +125,18 @@ export interface VirtualMode<TRow> {
   totalRows: number;
   /** Lookup row by index. Return `undefined` for not-yet-loaded indexes. */
   rowAt: (index: number) => TRow | undefined;
+  /**
+   * Measure EVERY rendered virtual row, not just the expanded one. By default
+   * RichGrid only calls `measureElement` for the expanded row (see
+   * `expandedRowKey`/`expandedRowKeys`) and trusts the virtualizer's
+   * `estimateSize` for all others — each measurement is a forced layout read in
+   * the scroll path, so for uniform-height rows it's pure cost. Opt in when rows
+   * are *genuinely* variable height (multi-line summary cards, day-grouped
+   * feeds, wrap-on-tags rails): the virtualizer then measures each visible
+   * row's real height and keeps offsets exact. Scope is the visible window plus
+   * overscan, so the cost is bounded to a few dozen rows per frame.
+   */
+  measureAll?: boolean;
 }
 
 export interface RichGridProps<TRow> {
@@ -141,6 +162,15 @@ export interface RichGridProps<TRow> {
    * (reset on remount).
    */
   resizableColumns?: boolean;
+  /**
+   * Controlled column-width overrides (px, keyed by column key). When
+   * provided, RichGrid renders these widths and reports drags through
+   * `onColumnWidthsChange` instead of keeping internal state — the same
+   * controlled/uncontrolled split as `selectedRowIds`. Lets callers keep
+   * resized widths across remounts (see `usePersistedColumnWidths`).
+   */
+  columnWidths?: Record<string, number>;
+  onColumnWidthsChange?: (next: Record<string, number>) => void;
   /** Controlled selection (row IDs). When omitted, selection is uncontrolled. */
   selectedRowIds?: ReadonlySet<string>;
   onSelectedRowIdsChange?: (next: ReadonlySet<string>) => void;
@@ -186,7 +216,13 @@ export interface RichGridProps<TRow> {
    * `onMouseEnter`, `onMouseLeave` are merged BEFORE this — return them here
    * to override (rare).
    */
-  rowProps?: (ctx: CellRenderContext<TRow>) => HTMLAttributes<HTMLDivElement>;
+  /** Extra props for the row element. `data-*` attributes are explicitly allowed:
+   *  they are valid on any DOM node and are how consumers hang test hooks off a
+   *  row, but React's `HTMLAttributes` does not model them, so a bare
+   *  `HTMLAttributes` return type rejected `{ 'data-testid': … }`. */
+  rowProps?: (
+    ctx: CellRenderContext<TRow>,
+  ) => HTMLAttributes<HTMLDivElement> & Record<`data-${string}`, string | number | boolean | undefined>;
 
   /** Extra style merged onto the sticky header row. */
   headerStyle?: CSSProperties;
@@ -395,6 +431,10 @@ function HeaderCell<TRow>({ col, sortState, onSortChange, resizable, onResize }:
   const sortable = !!col.sortKey && !!onSortChange;
   const active = sortable && sortState?.column === col.sortKey;
   const iconState: 'inactive' | 'asc' | 'desc' = active ? sortState!.dir : 'inactive';
+  // Resize-handle affordance: hover highlights the divider; a drag keeps it
+  // highlighted even when the pointer drifts off the 7px hit strip.
+  const [handleHover, setHandleHover] = useState(false);
+  const [handleDrag, setHandleDrag] = useState(false);
 
   const cellStyle: CSSProperties = {
     position: 'relative',
@@ -424,15 +464,24 @@ function HeaderCell<TRow>({ col, sortState, onSortChange, resizable, onResize }:
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       document.body.style.cursor = '';
+      setHandleDrag(false);
     };
     document.body.style.cursor = 'col-resize';
+    setHandleDrag(true);
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
   };
 
+  // The hit strip stays 7px wide; the visible affordance is a divider line
+  // hugging the column edge — always present so column boundaries (and that
+  // they're grabbable) are discoverable, accent-highlighted while hovered
+  // or dragging.
+  const handleActive = handleHover || handleDrag;
   const handle = resizable ? (
     <div
       onPointerDown={startResize}
+      onPointerEnter={() => setHandleHover(true)}
+      onPointerLeave={() => setHandleHover(false)}
       onClick={(e) => e.stopPropagation()}
       aria-hidden="true"
       style={{
@@ -444,8 +493,21 @@ function HeaderCell<TRow>({ col, sortState, onSortChange, resizable, onResize }:
         cursor: 'col-resize',
         touchAction: 'none',
         zIndex: 3,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
       }}
-    />
+    >
+      <span
+        style={{
+          width: handleActive ? 3 : 1,
+          height: handleActive ? '100%' : '60%',
+          borderRadius: 2,
+          background: handleActive ? GRID_COLORS.blue : GRID_COLORS.border,
+          transition: 'background-color 100ms ease, width 100ms ease, height 100ms ease',
+        }}
+      />
+    </div>
   ) : null;
 
   if (!sortable) {
@@ -615,7 +677,8 @@ const BodyRow = memo(BodyRowImpl) as typeof BodyRowImpl;
 // ─── Main component ─────────────────────────────────────────────────────────
 
 export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
-  useGridTheme(); // re-render when the host re-injects grid colours (runtime theme switch)
+  useSyncExternalStore(subscribeGridTheme, getGridThemeVersion, getGridThemeVersion);
+
   const {
     columns,
     getRowId,
@@ -623,6 +686,8 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
     virtualMode,
     selectable = false,
     resizableColumns = false,
+    columnWidths: controlledWidths,
+    onColumnWidthsChange,
     selectedRowIds: controlledSelected,
     onSelectedRowIdsChange,
     onRowClick,
@@ -674,33 +739,57 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
   // Uncontrolled selection fallback.
   const [uncontrolled, setUncontrolled] = useState<ReadonlySet<string>>(() => new Set());
   const selectedRowIds = controlledSelected ?? uncontrolled;
-  const setSelectedRowIds = useCallback(
-    (next: ReadonlySet<string>) => {
-      if (controlledSelected !== undefined) {
-        onSelectedRowIdsChange?.(next);
-      } else {
-        setUncontrolled(next);
-        onSelectedRowIdsChange?.(next);
-      }
-    },
-    [controlledSelected, onSelectedRowIdsChange],
-  );
+  // Latest-value refs so the selection callbacks below can stay IDENTITY-STABLE
+  // across renders. `selectedRowIds` (and the controlled props) are typically a
+  // fresh Set each render; if `setSelectedRowIds` / `handleRowSelect` closed over
+  // them directly they'd change identity every render and — being passed to every
+  // BodyRow — would defeat memo(BodyRow) on every selection toggle, re-rendering
+  // the whole visible window instead of just the rows whose selection flipped.
+  const selectedRowIdsRef = useRef(selectedRowIds);
+  selectedRowIdsRef.current = selectedRowIds;
+  const controlledSelectedRef = useRef(controlledSelected);
+  controlledSelectedRef.current = controlledSelected;
+  const onSelectedRowIdsChangeRef = useRef(onSelectedRowIdsChange);
+  onSelectedRowIdsChangeRef.current = onSelectedRowIdsChange;
+  const setSelectedRowIds = useCallback((next: ReadonlySet<string>) => {
+    if (controlledSelectedRef.current !== undefined) {
+      onSelectedRowIdsChangeRef.current?.(next);
+    } else {
+      setUncontrolled(next);
+      onSelectedRowIdsChangeRef.current?.(next);
+    }
+  }, []);
 
   const handleRowSelect = useCallback(
     (rowId: string, checked: boolean) => {
-      const next = new Set(selectedRowIds);
+      const next = new Set(selectedRowIdsRef.current);
       if (checked) next.add(rowId);
       else next.delete(rowId);
       setSelectedRowIds(next);
     },
-    [selectedRowIds, setSelectedRowIds],
+    [setSelectedRowIds],
   );
 
   // Per-column px width overrides set by dragging the header resize handles.
-  const [widthOverrides, setWidthOverrides] = useState<Record<string, number>>({});
-  const handleColumnResize = useCallback((key: string, width: number) => {
-    setWidthOverrides((prev) => (prev[key] === width ? prev : { ...prev, [key]: width }));
-  }, []);
+  // Controlled when `columnWidths` is provided (the caller owns + persists the
+  // map), internal otherwise — the same split as the selection props.
+  const [internalWidths, setInternalWidths] = useState<Record<string, number>>({});
+  const widthOverrides = controlledWidths ?? internalWidths;
+  // Ref so the drag-loop merge sees the latest map (pointermove outpaces the
+  // controlled-parent re-render) without re-binding the handler per move.
+  const widthOverridesRef = useRef(widthOverrides);
+  widthOverridesRef.current = widthOverrides;
+  const handleColumnResize = useCallback(
+    (key: string, width: number) => {
+      if (onColumnWidthsChange) {
+        const cur = widthOverridesRef.current;
+        if (cur[key] !== width) onColumnWidthsChange({ ...cur, [key]: width });
+        return;
+      }
+      setInternalWidths((prev) => (prev[key] === width ? prev : { ...prev, [key]: width }));
+    },
+    [onColumnWidthsChange],
+  );
 
   const gridTemplateColumns = useMemo(
     () => buildGridTemplate(columns as ColumnDef<unknown>[], selectable, widthOverrides),
@@ -838,17 +927,19 @@ export default function RichGrid<TRow>(props: RichGridProps<TRow>) {
             );
           }
           const rowId = getRowId(row);
-          // Only the row currently expanded has variable height (its
-          // expanded panel can grow). Other rows are fixed at
-          // rowMinHeight, so skip measureElement for them — every
-          // measurement is a forced layout read in the scroll path.
+          // By default only the row currently expanded has variable height (its
+          // expanded panel can grow). Other rows are fixed at rowMinHeight, so
+          // skip measureElement for them — every measurement is a forced layout
+          // read in the scroll path. When the caller opts into `measureAll`
+          // (genuinely variable-height rows), measure every visible row instead.
           const isExpandedRow = expandedRowKey === rowId || (expandedRowKeys?.has(rowId) ?? false);
+          const measureThisRow = isExpandedRow || virtualMode!.measureAll === true;
           return (
             <div
               key={vi.key}
               data-index={vi.index}
               ref={
-                isExpandedRow
+                measureThisRow
                   ? (el) => {
                       if (el) virtualMode!.virtualizer.measureElement(el);
                     }

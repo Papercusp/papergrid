@@ -34,7 +34,7 @@ import {
   type Theme,
 } from '@glideapps/glide-data-grid';
 import '@glideapps/glide-data-grid/dist/index.css';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   evaluateFormatter,
   formatCellValue,
@@ -50,13 +50,14 @@ import {
 } from './grid-config';
 import {
   GRID_COLORS,
+  getGridThemeVersion,
   glideTheme,
+  subscribeGridTheme,
   EDIT_INPUT_STYLE,
   STEPPER_BTN_STYLE,
   STEPPER_PILL_STYLE,
   STEPPER_GLOBAL_CSS,
 } from './grid-theme';
-import { useGridTheme } from './use-grid-theme';
 
 export interface ButtonDef {
   label: string;
@@ -270,7 +271,8 @@ export default function DataGridShell({
   onRowClick,
   hideRowMarkers,
 }: DataGridShellProps) {
-  useGridTheme(); // re-render when the host re-injects grid colours (runtime theme switch)
+  useSyncExternalStore(subscribeGridTheme, getGridThemeVersion, getGridThemeVersion);
+
   // Virtual mode: getRow + rowCount override data array
   const resolveRow = getRowProp ?? ((idx: number) => data[idx]);
   const effectiveRowCount = rowCountProp ?? data.length;

@@ -4,8 +4,8 @@
 
 // Theme — brand-neutral by default; hosts inject colours via configureGridColors.
 export {
-  GRID_COLORS, glideTheme, configureGridColors,
-  subscribeGridTheme, getGridThemeVersion,
+  GRID_COLORS, GRID_THEME_CHANGE_EVENT, glideTheme, configureGridColors,
+  getGridThemeVersion, subscribeGridTheme,
   EDIT_INPUT_STYLE, STEPPER_BTN_STYLE, STEPPER_PILL_STYLE, STEPPER_GLOBAL_CSS,
   TD_BASE, TH_BASE, TABLE_WRAPPER_STYLE, TABLE_STYLE, GRID_PANEL_STYLE,
   CHECKBOX_STYLE, STEPPER_INPUT_STYLE,
@@ -41,10 +41,45 @@ export type {
   VirtualMode as RichGridVirtualMode,
 } from './RichGrid';
 
+// VirtualGrid — RichGrid + an owned TanStack virtualizer + scroll container.
+// The drop-in for an in-memory row array that should NOT mount every row as DOM
+// (so a fetch cap is no longer how render stays cheap). See VirtualGrid.tsx.
+export { default as VirtualGrid } from './VirtualGrid';
+export type { VirtualGridProps } from './VirtualGrid';
+
 // Hover-expand state machine
 export { useHoverExpand } from './use-hover-expand';
+
+// Persisted column widths — pairs with RichGrid's controlled
+// columnWidths/onColumnWidthsChange so drag-resized widths survive remounts.
+export { usePersistedColumnWidths } from './use-persisted-column-widths';
+export type { ColumnWidthStorage } from './use-persisted-column-widths';
 
 // Generic client-side sort helper for RichGrid consumers (small datasets;
 // pushed into the data source for larger ones).
 export { applySort } from './sort-util';
 export type { UseHoverExpandOptions, HoverExpandHandle } from './use-hover-expand';
+
+// Generic, pure, dependency-free per-column FILTER engine for RichGrid
+// consumers (symmetric sibling of sort-util). The consumer holds the
+// ColumnFilterState (e.g. in a nuqs URL param) and calls applyColumnFilters
+// before passing rows in. ColumnDef.filter opts a column in.
+export {
+  applyColumnFilters,
+  deriveEnumOptions,
+  encodeColumnFilters,
+  decodeColumnFilters,
+  filterChipLabel,
+} from './column-filter';
+export type {
+  ColumnFilterSpec,
+  TextFilterSpec,
+  EnumFilterSpec,
+  NumberFilterSpec,
+  BooleanFilterSpec,
+  ColumnFilterValue,
+  NumberFilterValue,
+  ColumnFilterState,
+  FilterableColumn,
+  EnumOption,
+} from './column-filter';
