@@ -190,7 +190,7 @@ export function applyColumnFilters<TRow>(
     const col = columns.find((c) => c.key === key);
     if (!col?.filter) continue;
     const value = state[key];
-    if (isInactiveValue(col.filter as ColumnFilterSpec<unknown>, value)) continue;
+    if (value === undefined || isInactiveValue(col.filter as ColumnFilterSpec<unknown>, value)) continue;
     active.push({ spec: col.filter, value });
   }
   if (active.length === 0) return rows as TRow[];
@@ -309,6 +309,7 @@ export function encodeColumnFilters(state: ColumnFilterState | null | undefined)
   const parts: string[] = [];
   for (const key of Object.keys(state)) {
     const value = state[key];
+    if (value === undefined) continue;
     const spec = inferSpecFromValue(value);
     if (!spec) continue;
     const encoded = encodeClauseValue(spec, value);
