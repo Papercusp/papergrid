@@ -1,5 +1,6 @@
 {
   "name": "@papercusp/kv-persist-indexeddb",
+  "type": "module",
   "version": "0.0.1",
   "description": "IndexedDB implementation of the @papercusp/kv-persist contract. Client-only; degrades to a no-op when IndexedDB is unavailable (SSR / private mode).",
   "main": "src/index.ts",
